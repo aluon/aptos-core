@@ -778,6 +778,9 @@ fn run(
     match cur {
         PassResult::Parser(prog) => {
             let prog = parser::merge_spec_modules::program(compilation_env, prog);
+            if compilation_env.flags().debug() {
+                eprintln!("After parser: program = {:#?}", &prog)
+            };
             let prog = unit_test::filter_test_members::program(compilation_env, prog);
             let prog = verification::ast_filter::program(compilation_env, prog);
             if compilation_env.flags().debug() {

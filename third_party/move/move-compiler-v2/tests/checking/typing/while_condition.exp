@@ -14,7 +14,8 @@ module 0x8675309::M {
           } else {
             break
           }
-        }
+        };
+        Tuple()
     }
     private fun t1() {
         loop {
@@ -36,7 +37,8 @@ module 0x8675309::M {
           } else {
             break
           }
-        }
+        };
+        Tuple()
     }
     spec fun $t0();
     spec fun $t1();
