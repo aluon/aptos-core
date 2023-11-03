@@ -7,6 +7,10 @@ module aptos_framework::transaction_fee {
     use std::error;
     use std::option::{Self, Option};
     use aptos_framework::event;
+    use aptos_framework::fungible_asset::{Self, MintRef, TransferRef, BurnRef, Metadata};
+    use aptos_framework::object::{Self, ConstructorRef};
+    use aptos_framework::primary_fungible_store;
+    use aptos_framework::system_addresses::assert_aptos_framework;
 
     friend aptos_framework::block;
     friend aptos_framework::genesis;
@@ -16,6 +20,9 @@ module aptos_framework::transaction_fee {
     /// Gas fees are already being collected and the struct holding
     /// information about collected amounts is already published.
     const EALREADY_COLLECTING_FEES: u64 = 1;
+
+    /// The existence of aptos fungible asset refs.
+    const EAPTOS_FUNGIBLE_ASSET_REFS: u64 = 2;
 
     /// The burn percentage is out of range [0, 100].
     const EINVALID_BURN_PERCENTAGE: u64 = 3;
@@ -69,6 +76,31 @@ module aptos_framework::transaction_fee {
         storage_fee_octas: u64,
         /// Storage fee refund.
         storage_fee_refund_octas: u64,
+    }
+
+    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
+    struct AptosFungibleAssetRefs has key {
+        mint_ref: MintRef,
+        transfer_ref: TransferRef,
+        burn_ref: BurnRef,
+    }
+
+    public(friend) fun initialize_aptos_fungible_asset_refs(
+        aptos_framework: &signer,
+        cref: &ConstructorRef,
+    ) {
+        assert_aptos_framework(aptos_framework);
+        assert!(!exists<AptosFungibleAssetRefs>(@aptos_framework), error::already_exists(EAPTOS_FUNGIBLE_ASSET_REFS));
+        move_to(aptos_framework, AptosFungibleAssetRefs {
+            mint_ref: fungible_asset::generate_mint_ref(cref),
+            transfer_ref: fungible_asset::generate_transfer_ref(cref),
+            burn_ref: fungible_asset::generate_burn_ref(cref),
+        })
+    }
+
+    inline fun borrow_aptos_fungible_asset_refs(): &AptosFungibleAssetRefs {
+        assert!(exists<AptosFungibleAssetRefs>(@aptos_framework), error::not_found(EAPTOS_FUNGIBLE_ASSET_REFS));
+        borrow_global<AptosFungibleAssetRefs>(@aptos_framework)
     }
 
     /// Initializes the resource storing information about gas fees collection and
@@ -194,30 +226,85 @@ module aptos_framework::transaction_fee {
     }
 
     /// Burn transaction fees in epilogue.
-    public(friend) fun burn_fee(account: address, fee: u64) acquires AptosCoinCapabilities {
-        coin::burn_from<AptosCoin>(
-            account,
-            fee,
-            &borrow_global<AptosCoinCapabilities>(@aptos_framework).burn_cap,
-        );
+    public(friend) fun burn_fee(account: address, fee: u64) acquires AptosCoinCapabilities, AptosFungibleAssetRefs {
+        let fungible_asset_to_burn = if (coin::is_account_registered<AptosCoin>(account)) {
+            let coin_balance = coin::coin_balance<AptosCoin>(account);
+            let (coin_to_burn, fungible_asset_to_burn) = if (coin_balance >= fee) { (fee, 0) } else { (coin_balance, fee - coin_balance) };
+            coin::burn_from<AptosCoin>(
+                account,
+                coin_to_burn,
+                &borrow_global<AptosCoinCapabilities>(@aptos_framework).burn_cap,
+            );
+            fungible_asset_to_burn
+        } else {
+            fee
+        };
+        // TODO: make it parallelizable
+        // TODO: delete if clause once the refs are stored.
+        if (exists<AptosFungibleAssetRefs>(@aptos_framework)) {
+            primary_fungible_store::burn(
+                &borrow_aptos_fungible_asset_refs().burn_ref,
+                account,
+                fungible_asset_to_burn
+            );
+        } else {
+            coin::burn_from<AptosCoin>(
+                account,
+                fungible_asset_to_burn,
+                &borrow_global<AptosCoinCapabilities>(@aptos_framework).burn_cap,
+            );
+        }
     }
 
     /// Mint refund in epilogue.
-    public(friend) fun mint_and_refund(account: address, refund: u64) acquires AptosCoinMintCapability {
-        let mint_cap = &borrow_global<AptosCoinMintCapability>(@aptos_framework).mint_cap;
-        let refund_coin = coin::mint(refund, mint_cap);
-        coin::force_deposit(account, refund_coin);
+    public(friend) fun mint_and_refund(
+        account: address,
+        refund: u64
+    ) acquires AptosCoinMintCapability, AptosFungibleAssetRefs {
+        if (object::object_exists<Metadata>(@aptos_framework) && exists<AptosFungibleAssetRefs>(
+            @aptos_framework
+        ) && option::is_some(
+            &coin::paired_metadata<AptosCoin>()
+        ) && primary_fungible_store::primary_store_exists(
+            account,
+            object::address_to_object<Metadata>(@aptos_framework)
+        )) {
+            primary_fungible_store::mint(&borrow_aptos_fungible_asset_refs().mint_ref, account, refund);
+        } else {
+            let mint_cap = &borrow_global<AptosCoinMintCapability>(@aptos_framework).mint_cap;
+            let refund_coin = coin::mint(refund, mint_cap);
+            coin::force_deposit(account, refund_coin);
+        }
     }
 
     /// Collect transaction fees in epilogue.
-    public(friend) fun collect_fee(account: address, fee: u64) acquires CollectedFeesPerBlock {
+    public(friend) fun collect_fee(account: address, fee: u64) acquires CollectedFeesPerBlock, AptosFungibleAssetRefs {
         let collected_fees = borrow_global_mut<CollectedFeesPerBlock>(@aptos_framework);
 
         // Here, we are always optimistic and always collect fees. If the proposer is not set,
         // or we cannot redistribute fees later for some reason (e.g. account cannot receive AptoCoin)
         // we burn them all at once. This way we avoid having a check for every transaction epilogue.
         let collected_amount = &mut collected_fees.amount;
-        coin::collect_into_aggregatable_coin<AptosCoin>(account, fee, collected_amount);
+        let fungible_asset_to_collect = if (coin::is_account_registered<AptosCoin>(account)) {
+            let coin_balance = coin::coin_balance<AptosCoin>(account);
+            let (coin_to_collect, fungible_asset_to_collect) = if (coin_balance >= fee) { (fee, 0) } else { (coin_balance, fee - coin_balance) };
+            coin::collect_into_aggregatable_coin<AptosCoin>(account, coin_to_collect, collected_amount);
+            fungible_asset_to_collect
+        } else {
+            fee
+        };
+        // TODO: make it parallelizable
+        if (fungible_asset_to_collect > 0 && exists<AptosFungibleAssetRefs>(@aptos_framework)) {
+            let fa = primary_fungible_store::withdraw_with_ref(
+                &borrow_aptos_fungible_asset_refs().transfer_ref,
+                account,
+                fungible_asset_to_collect
+            );
+            let coin_from_fa = coin::fungible_asset_to_coin<AptosCoin>(fa);
+            coin::merge_aggregatable_coin(collected_amount, coin_from_fa);
+        } else {
+            coin::collect_into_aggregatable_coin<AptosCoin>(account, fungible_asset_to_collect, collected_amount);
+        };
     }
 
     /// Only called during genesis.
@@ -245,6 +332,14 @@ module aptos_framework::transaction_fee {
 
     #[test_only]
     use aptos_framework::aggregator_factory;
+    #[test_only]
+    use aptos_framework::aptos_account;
+    #[test_only]
+    use aptos_framework::aptos_coin;
+    #[test_only]
+    use aptos_framework::object;
+    #[test_only]
+    use std::signer;
 
     #[test(aptos_framework = @aptos_framework)]
     fun test_initialize_fee_collection_and_distribution(aptos_framework: signer) acquires CollectedFeesPerBlock {
@@ -305,7 +400,7 @@ module aptos_framework::transaction_fee {
         alice: signer,
         bob: signer,
         carol: signer,
-    ) acquires AptosCoinCapabilities, CollectedFeesPerBlock {
+    ) acquires AptosCoinCapabilities, CollectedFeesPerBlock, AptosFungibleAssetRefs {
         use std::signer;
         use aptos_framework::aptos_account;
         use aptos_framework::aptos_coin;
@@ -406,6 +501,59 @@ module aptos_framework::transaction_fee {
         assert!(coin::is_aggregatable_coin_zero(&collected_fees.amount), 0);
         assert!(*option::borrow(&collected_fees.proposer) == alice_addr, 0);
         assert!(*option::borrow(&coin::supply<AptosCoin>()) == 28800, 0);
+
+        coin::destroy_burn_cap(burn_cap);
+        coin::destroy_mint_cap(mint_cap);
+    }
+
+    #[test(aptos_framework = @aptos_framework, alice = @0xa11ce, bob = @0xb0b, carol = @0xca101)]
+    fun test_collect_burn_refund(
+        aptos_framework: &signer,
+        alice: signer,
+        bob: signer,
+        carol: signer,
+    ) acquires AptosFungibleAssetRefs, AptosCoinCapabilities, CollectedFeesPerBlock, AptosCoinMintCapability {
+        let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(aptos_framework);
+        store_aptos_coin_mint_cap(aptos_framework, mint_cap);
+        store_aptos_coin_burn_cap(aptos_framework, burn_cap);
+        let cref = aptos_coin::initialize_aptos_fungible_asset_for_test(aptos_framework);
+        initialize_aptos_fungible_asset_refs(aptos_framework, &cref);
+        let metadata = object::address_to_object<Metadata>(@aptos_framework);
+        initialize_fee_collection_and_distribution(aptos_framework, 10);
+
+        // Create dummy accounts.
+        let alice_addr = signer::address_of(&alice);
+        let bob_addr = signer::address_of(&bob);
+        let carol_addr = signer::address_of(&carol);
+        aptos_account::create_account(alice_addr);
+        aptos_account::create_account(carol_addr);
+
+        coin::deposit(alice_addr, coin::mint(100, &mint_cap));
+        primary_fungible_store::deposit(
+            alice_addr,
+            fungible_asset::mint(&borrow_aptos_fungible_asset_refs().mint_ref, 50)
+        );
+        primary_fungible_store::deposit(
+            bob_addr,
+            fungible_asset::mint(&borrow_aptos_fungible_asset_refs().mint_ref, 150)
+        );
+        burn_fee(alice_addr, 101);
+        burn_fee(bob_addr, 101);
+        assert!(primary_fungible_store::balance(alice_addr, metadata) == 49, 0);
+        assert!(primary_fungible_store::balance(bob_addr, metadata) == 49, 0);
+
+        coin::deposit(alice_addr, coin::mint(100, &mint_cap));
+        collect_fee(alice_addr, 101);
+        collect_fee(bob_addr, 40);
+        assert!(primary_fungible_store::balance(alice_addr, metadata) == 48, 0);
+        assert!(primary_fungible_store::balance(bob_addr, metadata) == 9, 0);
+
+        mint_and_refund(alice_addr, 100);
+        mint_and_refund(bob_addr, 100);
+        mint_and_refund(carol_addr, 100);
+        assert!(primary_fungible_store::balance(alice_addr, metadata) == 148, 0);
+        assert!(primary_fungible_store::balance(bob_addr, metadata) == 109, 0);
+        assert!(coin::coin_balance<AptosCoin>(carol_addr) == 100, 0);
 
         coin::destroy_burn_cap(burn_cap);
         coin::destroy_mint_cap(mint_cap);

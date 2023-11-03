@@ -10,7 +10,10 @@ This module provides an interface to burn or collect and redistribute transactio
 -  [Resource `AptosCoinMintCapability`](#0x1_transaction_fee_AptosCoinMintCapability)
 -  [Resource `CollectedFeesPerBlock`](#0x1_transaction_fee_CollectedFeesPerBlock)
 -  [Struct `FeeStatement`](#0x1_transaction_fee_FeeStatement)
+-  [Resource `AptosFungibleAssetRefs`](#0x1_transaction_fee_AptosFungibleAssetRefs)
 -  [Constants](#@Constants_0)
+-  [Function `initialize_aptos_fungible_asset_refs`](#0x1_transaction_fee_initialize_aptos_fungible_asset_refs)
+-  [Function `borrow_aptos_fungible_asset_refs`](#0x1_transaction_fee_borrow_aptos_fungible_asset_refs)
 -  [Function `initialize_fee_collection_and_distribution`](#0x1_transaction_fee_initialize_fee_collection_and_distribution)
 -  [Function `is_fees_collection_enabled`](#0x1_transaction_fee_is_fees_collection_enabled)
 -  [Function `upgrade_burn_percentage`](#0x1_transaction_fee_upgrade_burn_percentage)
@@ -44,7 +47,10 @@ This module provides an interface to burn or collect and redistribute transactio
 <b>use</b> <a href="coin.md#0x1_coin">0x1::coin</a>;
 <b>use</b> <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error">0x1::error</a>;
 <b>use</b> <a href="event.md#0x1_event">0x1::event</a>;
+<b>use</b> <a href="fungible_asset.md#0x1_fungible_asset">0x1::fungible_asset</a>;
+<b>use</b> <a href="object.md#0x1_object">0x1::object</a>;
 <b>use</b> <a href="../../aptos-stdlib/../move-stdlib/doc/option.md#0x1_option">0x1::option</a>;
+<b>use</b> <a href="primary_fungible_store.md#0x1_primary_fungible_store">0x1::primary_fungible_store</a>;
 <b>use</b> <a href="stake.md#0x1_stake">0x1::stake</a>;
 <b>use</b> <a href="system_addresses.md#0x1_system_addresses">0x1::system_addresses</a>;
 </code></pre>
@@ -219,6 +225,46 @@ This is meant to emitted as a module event.
 
 </details>
 
+<a id="0x1_transaction_fee_AptosFungibleAssetRefs"></a>
+
+## Resource `AptosFungibleAssetRefs`
+
+
+
+<pre><code>#[resource_group_member(#[group = <a href="object.md#0x1_object_ObjectGroup">0x1::object::ObjectGroup</a>])]
+<b>struct</b> <a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a> <b>has</b> key
+</code></pre>
+
+
+
+<details>
+<summary>Fields</summary>
+
+
+<dl>
+<dt>
+<code>mint_ref: <a href="fungible_asset.md#0x1_fungible_asset_MintRef">fungible_asset::MintRef</a></code>
+</dt>
+<dd>
+
+</dd>
+<dt>
+<code>transfer_ref: <a href="fungible_asset.md#0x1_fungible_asset_TransferRef">fungible_asset::TransferRef</a></code>
+</dt>
+<dd>
+
+</dd>
+<dt>
+<code>burn_ref: <a href="fungible_asset.md#0x1_fungible_asset_BurnRef">fungible_asset::BurnRef</a></code>
+</dt>
+<dd>
+
+</dd>
+</dl>
+
+
+</details>
+
 <a id="@Constants_0"></a>
 
 ## Constants
@@ -235,6 +281,16 @@ information about collected amounts is already published.
 
 
 
+<a id="0x1_transaction_fee_EAPTOS_FUNGIBLE_ASSET_REFS"></a>
+
+The existence of aptos fungible asset refs.
+
+
+<pre><code><b>const</b> <a href="transaction_fee.md#0x1_transaction_fee_EAPTOS_FUNGIBLE_ASSET_REFS">EAPTOS_FUNGIBLE_ASSET_REFS</a>: u64 = 2;
+</code></pre>
+
+
+
 <a id="0x1_transaction_fee_EINVALID_BURN_PERCENTAGE"></a>
 
 The burn percentage is out of range [0, 100].
@@ -244,6 +300,64 @@ The burn percentage is out of range [0, 100].
 </code></pre>
 
 
+
+<a id="0x1_transaction_fee_initialize_aptos_fungible_asset_refs"></a>
+
+## Function `initialize_aptos_fungible_asset_refs`
+
+
+
+<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_initialize_aptos_fungible_asset_refs">initialize_aptos_fungible_asset_refs</a>(aptos_framework: &<a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer">signer</a>, cref: &<a href="object.md#0x1_object_ConstructorRef">object::ConstructorRef</a>)
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_initialize_aptos_fungible_asset_refs">initialize_aptos_fungible_asset_refs</a>(
+    aptos_framework: &<a href="../../aptos-stdlib/../move-stdlib/doc/signer.md#0x1_signer">signer</a>,
+    cref: &ConstructorRef,
+) {
+    assert_aptos_framework(aptos_framework);
+    <b>assert</b>!(!<b>exists</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a>&gt;(@aptos_framework), <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_already_exists">error::already_exists</a>(<a href="transaction_fee.md#0x1_transaction_fee_EAPTOS_FUNGIBLE_ASSET_REFS">EAPTOS_FUNGIBLE_ASSET_REFS</a>));
+    <b>move_to</b>(aptos_framework, <a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a> {
+        mint_ref: <a href="fungible_asset.md#0x1_fungible_asset_generate_mint_ref">fungible_asset::generate_mint_ref</a>(cref),
+        transfer_ref: <a href="fungible_asset.md#0x1_fungible_asset_generate_transfer_ref">fungible_asset::generate_transfer_ref</a>(cref),
+        burn_ref: <a href="fungible_asset.md#0x1_fungible_asset_generate_burn_ref">fungible_asset::generate_burn_ref</a>(cref),
+    })
+}
+</code></pre>
+
+
+
+</details>
+
+<a id="0x1_transaction_fee_borrow_aptos_fungible_asset_refs"></a>
+
+## Function `borrow_aptos_fungible_asset_refs`
+
+
+
+<pre><code><b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_borrow_aptos_fungible_asset_refs">borrow_aptos_fungible_asset_refs</a>(): &<a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">transaction_fee::AptosFungibleAssetRefs</a>
+</code></pre>
+
+
+
+<details>
+<summary>Implementation</summary>
+
+
+<pre><code>inline <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_borrow_aptos_fungible_asset_refs">borrow_aptos_fungible_asset_refs</a>(): &<a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a> {
+    <b>assert</b>!(<b>exists</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a>&gt;(@aptos_framework), <a href="../../aptos-stdlib/../move-stdlib/doc/error.md#0x1_error_not_found">error::not_found</a>(<a href="transaction_fee.md#0x1_transaction_fee_EAPTOS_FUNGIBLE_ASSET_REFS">EAPTOS_FUNGIBLE_ASSET_REFS</a>));
+    <b>borrow_global</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a>&gt;(@aptos_framework)
+}
+</code></pre>
+
+
+
+</details>
 
 <a id="0x1_transaction_fee_initialize_fee_collection_and_distribution"></a>
 
@@ -503,12 +617,34 @@ Burn transaction fees in epilogue.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_burn_fee">burn_fee</a>(<a href="account.md#0x1_account">account</a>: <b>address</b>, fee: u64) <b>acquires</b> <a href="transaction_fee.md#0x1_transaction_fee_AptosCoinCapabilities">AptosCoinCapabilities</a> {
-    <a href="coin.md#0x1_coin_burn_from">coin::burn_from</a>&lt;AptosCoin&gt;(
-        <a href="account.md#0x1_account">account</a>,
-        fee,
-        &<b>borrow_global</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosCoinCapabilities">AptosCoinCapabilities</a>&gt;(@aptos_framework).burn_cap,
-    );
+<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_burn_fee">burn_fee</a>(<a href="account.md#0x1_account">account</a>: <b>address</b>, fee: u64) <b>acquires</b> <a href="transaction_fee.md#0x1_transaction_fee_AptosCoinCapabilities">AptosCoinCapabilities</a>, <a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a> {
+    <b>let</b> fungible_asset_to_burn = <b>if</b> (<a href="coin.md#0x1_coin_is_account_registered">coin::is_account_registered</a>&lt;AptosCoin&gt;(<a href="account.md#0x1_account">account</a>)) {
+        <b>let</b> coin_balance = <a href="coin.md#0x1_coin_coin_balance">coin::coin_balance</a>&lt;AptosCoin&gt;(<a href="account.md#0x1_account">account</a>);
+        <b>let</b> (coin_to_burn, fungible_asset_to_burn) = <b>if</b> (coin_balance &gt;= fee) { (fee, 0) } <b>else</b> { (coin_balance, fee - coin_balance) };
+        <a href="coin.md#0x1_coin_burn_from">coin::burn_from</a>&lt;AptosCoin&gt;(
+            <a href="account.md#0x1_account">account</a>,
+            coin_to_burn,
+            &<b>borrow_global</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosCoinCapabilities">AptosCoinCapabilities</a>&gt;(@aptos_framework).burn_cap,
+        );
+        fungible_asset_to_burn
+    } <b>else</b> {
+        fee
+    };
+    // TODO: make it parallelizable
+    // TODO: delete <b>if</b> clause once the refs are stored.
+    <b>if</b> (<b>exists</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a>&gt;(@aptos_framework)) {
+        <a href="primary_fungible_store.md#0x1_primary_fungible_store_burn">primary_fungible_store::burn</a>(
+            &<a href="transaction_fee.md#0x1_transaction_fee_borrow_aptos_fungible_asset_refs">borrow_aptos_fungible_asset_refs</a>().burn_ref,
+            <a href="account.md#0x1_account">account</a>,
+            fungible_asset_to_burn
+        );
+    } <b>else</b> {
+        <a href="coin.md#0x1_coin_burn_from">coin::burn_from</a>&lt;AptosCoin&gt;(
+            <a href="account.md#0x1_account">account</a>,
+            fungible_asset_to_burn,
+            &<b>borrow_global</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosCoinCapabilities">AptosCoinCapabilities</a>&gt;(@aptos_framework).burn_cap,
+        );
+    }
 }
 </code></pre>
 
@@ -532,10 +668,24 @@ Mint refund in epilogue.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_mint_and_refund">mint_and_refund</a>(<a href="account.md#0x1_account">account</a>: <b>address</b>, refund: u64) <b>acquires</b> <a href="transaction_fee.md#0x1_transaction_fee_AptosCoinMintCapability">AptosCoinMintCapability</a> {
-    <b>let</b> mint_cap = &<b>borrow_global</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosCoinMintCapability">AptosCoinMintCapability</a>&gt;(@aptos_framework).mint_cap;
-    <b>let</b> refund_coin = <a href="coin.md#0x1_coin_mint">coin::mint</a>(refund, mint_cap);
-    <a href="coin.md#0x1_coin_force_deposit">coin::force_deposit</a>(<a href="account.md#0x1_account">account</a>, refund_coin);
+<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_mint_and_refund">mint_and_refund</a>(
+    <a href="account.md#0x1_account">account</a>: <b>address</b>,
+    refund: u64
+) <b>acquires</b> <a href="transaction_fee.md#0x1_transaction_fee_AptosCoinMintCapability">AptosCoinMintCapability</a>, <a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a> {
+    <b>if</b> (<a href="object.md#0x1_object_object_exists">object::object_exists</a>&lt;Metadata&gt;(@aptos_framework) && <b>exists</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a>&gt;(
+        @aptos_framework
+    ) && <a href="../../aptos-stdlib/../move-stdlib/doc/option.md#0x1_option_is_some">option::is_some</a>(
+        &<a href="coin.md#0x1_coin_paired_metadata">coin::paired_metadata</a>&lt;AptosCoin&gt;()
+    ) && <a href="primary_fungible_store.md#0x1_primary_fungible_store_primary_store_exists">primary_fungible_store::primary_store_exists</a>(
+        <a href="account.md#0x1_account">account</a>,
+        <a href="object.md#0x1_object_address_to_object">object::address_to_object</a>&lt;Metadata&gt;(@aptos_framework)
+    )) {
+        <a href="primary_fungible_store.md#0x1_primary_fungible_store_mint">primary_fungible_store::mint</a>(&<a href="transaction_fee.md#0x1_transaction_fee_borrow_aptos_fungible_asset_refs">borrow_aptos_fungible_asset_refs</a>().mint_ref, <a href="account.md#0x1_account">account</a>, refund);
+    } <b>else</b> {
+        <b>let</b> mint_cap = &<b>borrow_global</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosCoinMintCapability">AptosCoinMintCapability</a>&gt;(@aptos_framework).mint_cap;
+        <b>let</b> refund_coin = <a href="coin.md#0x1_coin_mint">coin::mint</a>(refund, mint_cap);
+        <a href="coin.md#0x1_coin_force_deposit">coin::force_deposit</a>(<a href="account.md#0x1_account">account</a>, refund_coin);
+    }
 }
 </code></pre>
 
@@ -559,14 +709,33 @@ Collect transaction fees in epilogue.
 <summary>Implementation</summary>
 
 
-<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_collect_fee">collect_fee</a>(<a href="account.md#0x1_account">account</a>: <b>address</b>, fee: u64) <b>acquires</b> <a href="transaction_fee.md#0x1_transaction_fee_CollectedFeesPerBlock">CollectedFeesPerBlock</a> {
+<pre><code><b>public</b>(<b>friend</b>) <b>fun</b> <a href="transaction_fee.md#0x1_transaction_fee_collect_fee">collect_fee</a>(<a href="account.md#0x1_account">account</a>: <b>address</b>, fee: u64) <b>acquires</b> <a href="transaction_fee.md#0x1_transaction_fee_CollectedFeesPerBlock">CollectedFeesPerBlock</a>, <a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a> {
     <b>let</b> collected_fees = <b>borrow_global_mut</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_CollectedFeesPerBlock">CollectedFeesPerBlock</a>&gt;(@aptos_framework);
 
     // Here, we are always optimistic and always collect fees. If the proposer is not set,
     // or we cannot redistribute fees later for some reason (e.g. <a href="account.md#0x1_account">account</a> cannot receive AptoCoin)
     // we burn them all at once. This way we avoid having a check for every transaction epilogue.
     <b>let</b> collected_amount = &<b>mut</b> collected_fees.amount;
-    <a href="coin.md#0x1_coin_collect_into_aggregatable_coin">coin::collect_into_aggregatable_coin</a>&lt;AptosCoin&gt;(<a href="account.md#0x1_account">account</a>, fee, collected_amount);
+    <b>let</b> fungible_asset_to_collect = <b>if</b> (<a href="coin.md#0x1_coin_is_account_registered">coin::is_account_registered</a>&lt;AptosCoin&gt;(<a href="account.md#0x1_account">account</a>)) {
+        <b>let</b> coin_balance = <a href="coin.md#0x1_coin_coin_balance">coin::coin_balance</a>&lt;AptosCoin&gt;(<a href="account.md#0x1_account">account</a>);
+        <b>let</b> (coin_to_collect, fungible_asset_to_collect) = <b>if</b> (coin_balance &gt;= fee) { (fee, 0) } <b>else</b> { (coin_balance, fee - coin_balance) };
+        <a href="coin.md#0x1_coin_collect_into_aggregatable_coin">coin::collect_into_aggregatable_coin</a>&lt;AptosCoin&gt;(<a href="account.md#0x1_account">account</a>, coin_to_collect, collected_amount);
+        fungible_asset_to_collect
+    } <b>else</b> {
+        fee
+    };
+    // TODO: make it parallelizable
+    <b>if</b> (fungible_asset_to_collect &gt; 0 && <b>exists</b>&lt;<a href="transaction_fee.md#0x1_transaction_fee_AptosFungibleAssetRefs">AptosFungibleAssetRefs</a>&gt;(@aptos_framework)) {
+        <b>let</b> fa = <a href="primary_fungible_store.md#0x1_primary_fungible_store_withdraw_with_ref">primary_fungible_store::withdraw_with_ref</a>(
+            &<a href="transaction_fee.md#0x1_transaction_fee_borrow_aptos_fungible_asset_refs">borrow_aptos_fungible_asset_refs</a>().transfer_ref,
+            <a href="account.md#0x1_account">account</a>,
+            fungible_asset_to_collect
+        );
+        <b>let</b> coin_from_fa = <a href="coin.md#0x1_coin_fungible_asset_to_coin">coin::fungible_asset_to_coin</a>&lt;AptosCoin&gt;(fa);
+        <a href="coin.md#0x1_coin_merge_aggregatable_coin">coin::merge_aggregatable_coin</a>(collected_amount, coin_from_fa);
+    } <b>else</b> {
+        <a href="coin.md#0x1_coin_collect_into_aggregatable_coin">coin::collect_into_aggregatable_coin</a>&lt;AptosCoin&gt;(<a href="account.md#0x1_account">account</a>, fungible_asset_to_collect, collected_amount);
+    };
 }
 </code></pre>
 
