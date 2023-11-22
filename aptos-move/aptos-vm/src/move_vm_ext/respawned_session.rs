@@ -34,6 +34,7 @@ use aptos_vm_types::{
     storage::ChangeSetConfigs,
 };
 use bytes::Bytes;
+use move_binary_format::errors::PartialVMResult;
 use move_core_types::{
     language_storage::StructTag,
     value::MoveTypeLayout,
@@ -166,7 +167,7 @@ impl<'r> TAggregatorV1View for ExecutorViewWithChangeSet<'r> {
     fn get_aggregator_v1_state_value(
         &self,
         id: &Self::Identifier,
-    ) -> anyhow::Result<Option<StateValue>> {
+    ) -> PartialVMResult<Option<StateValue>> {
         match self.change_set.aggregator_v1_delta_set().get(id) {
             Some(delta_op) => Ok(self
                 .base_executor_view
@@ -295,7 +296,7 @@ impl<'r> TResourceView for ExecutorViewWithChangeSet<'r> {
         &self,
         state_key: &Self::Key,
         maybe_layout: Option<&Self::Layout>,
-    ) -> anyhow::Result<Option<StateValue>> {
+    ) -> PartialVMResult<Option<StateValue>> {
         match self.change_set.resource_write_set().get(state_key) {
             Some((write_op, _)) => Ok(write_op.as_state_value()),
             None => self
@@ -310,7 +311,7 @@ impl<'r> TResourceGroupView for ExecutorViewWithChangeSet<'r> {
     type Layout = MoveTypeLayout;
     type ResourceTag = StructTag;
 
-    fn resource_group_size(&self, _group_key: &Self::GroupKey) -> anyhow::Result<u64> {
+    fn resource_group_size(&self, _group_key: &Self::GroupKey) -> PartialVMResult<u64> {
         // In respawned session, gas is irrelevant, so we return 0 (GroupSizeKind::None).
         Ok(0)
     }
@@ -320,16 +321,14 @@ impl<'r> TResourceGroupView for ExecutorViewWithChangeSet<'r> {
         group_key: &Self::GroupKey,
         resource_tag: &Self::ResourceTag,
         maybe_layout: Option<&Self::Layout>,
-    ) -> anyhow::Result<Option<Bytes>> {
+    ) -> PartialVMResult<Option<Bytes>> {
         if let Some((write_op, layout)) = self
             .change_set
             .resource_group_write_set()
             .get(group_key)
             .and_then(|g| g.inner_ops().get(resource_tag))
         {
-            assert_layout_matches(maybe_layout, layout.as_deref())
-                .map_err(|e| anyhow::anyhow!("get_resource_from_group layout check: {:?}", e))?;
-
+            assert_layout_matches(maybe_layout, layout.as_deref())?;
             Ok(write_op.extract_raw_bytes())
         } else {
             self.base_resource_group_view.get_resource_from_group(
@@ -350,7 +349,7 @@ impl<'r> TResourceGroupView for ExecutorViewWithChangeSet<'r> {
 impl<'r> TModuleView for ExecutorViewWithChangeSet<'r> {
     type Key = StateKey;
 
-    fn get_module_state_value(&self, state_key: &Self::Key) -> anyhow::Result<Option<StateValue>> {
+    fn get_module_state_value(&self, state_key: &Self::Key) -> PartialVMResult<Option<StateValue>> {
         match self.change_set.module_write_set().get(state_key) {
             Some(write_op) => Ok(write_op.as_state_value()),
             None => self.base_executor_view.get_module_state_value(state_key),
@@ -363,8 +362,8 @@ impl<'r> StateStorageView for ExecutorViewWithChangeSet<'r> {
         self.base_executor_view.id()
     }
 
-    fn get_usage(&self) -> anyhow::Result<StateStorageUsage> {
-        anyhow::bail!("Unexpected access to get_usage()")
+    fn get_usage(&self) -> PartialVMResult<StateStorageUsage> {
+        unreachable!("Must not be called by RespawnedSession");
     }
 }
 

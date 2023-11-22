@@ -13,6 +13,7 @@ use aptos_types::{
 };
 use aptos_vm_types::change_set::GroupWrite;
 use bytes::Bytes;
+use move_binary_format::errors::{Location, PartialVMResult};
 use move_core_types::{
     effects::Op as MoveStorageOp,
     language_storage::StructTag,
@@ -198,19 +199,15 @@ impl<'r> WriteOpConverter<'r> {
 
     fn convert(
         &self,
-        state_value_metadata_result: anyhow::Result<Option<StateValueMetadataKind>>,
+        state_value_metadata_result: PartialVMResult<Option<StateValueMetadataKind>>,
         move_storage_op: MoveStorageOp<BytesWithResourceLayout>,
         legacy_creation_as_modification: bool,
     ) -> Result<WriteOp, VMStatus> {
         use MoveStorageOp::*;
         use WriteOp::*;
 
-        let maybe_existing_metadata = state_value_metadata_result.map_err(|_| {
-            VMStatus::error(
-                StatusCode::STORAGE_ERROR,
-                err_msg("Storage read failed when converting change set."),
-            )
-        })?;
+        let maybe_existing_metadata = state_value_metadata_result
+            .map_err(|e| e.finish(Location::Undefined).into_vm_status())?;
 
         let write_op = match (maybe_existing_metadata, move_storage_op) {
             (None, Modify(_) | Delete) => {
@@ -266,7 +263,7 @@ impl<'r> WriteOpConverter<'r> {
         let maybe_existing_metadata = self
             .remote
             .get_aggregator_v1_state_value_metadata(state_key)
-            .map_err(|_| VMStatus::error(StatusCode::SPECULATIVE_EXECUTION_ABORT_ERROR, None))?;
+            .map_err(|e| e.finish(Location::Undefined).into_vm_status())?;
         let data = serialize(&value).into();
 
         let op = match maybe_existing_metadata {

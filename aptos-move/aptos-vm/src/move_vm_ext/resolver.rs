@@ -8,6 +8,7 @@ use aptos_vm_types::resolver::{
     ExecutorView, ResourceGroupView, StateStorageView, StateValueMetadataResolver,
 };
 use bytes::Bytes;
+use move_binary_format::errors::PartialVMResult;
 use move_core_types::{language_storage::StructTag, resolver::MoveResolver};
 use std::collections::{BTreeMap, HashMap};
 
@@ -32,19 +33,19 @@ pub trait ResourceGroupResolver {
     fn release_resource_group_cache(&self)
         -> Option<HashMap<StateKey, BTreeMap<StructTag, Bytes>>>;
 
-    fn resource_group_size(&self, group_key: &StateKey) -> anyhow::Result<u64>;
+    fn resource_group_size(&self, group_key: &StateKey) -> PartialVMResult<u64>;
 
     fn resource_size_in_group(
         &self,
         group_key: &StateKey,
         resource_tag: &StructTag,
-    ) -> anyhow::Result<u64>;
+    ) -> PartialVMResult<u64>;
 
     fn resource_exists_in_group(
         &self,
         group_key: &StateKey,
         resource_tag: &StructTag,
-    ) -> anyhow::Result<bool>;
+    ) -> PartialVMResult<bool>;
 }
 
 pub trait AsExecutorView {

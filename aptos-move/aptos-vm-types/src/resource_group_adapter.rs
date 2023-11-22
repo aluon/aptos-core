@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::resolver::{ResourceGroupView, TResourceGroupView, TResourceView};
-use anyhow::Error;
 use aptos_types::state_store::state_key::StateKey;
 use bytes::Bytes;
-use move_core_types::{language_storage::StructTag, value::MoveTypeLayout};
+use move_binary_format::errors::{PartialVMError, PartialVMResult};
+use move_core_types::{language_storage::StructTag, value::MoveTypeLayout, vm_status::StatusCode};
 use serde::Serialize;
 use std::{
     cell::RefCell,
@@ -50,7 +50,9 @@ pub fn group_size_as_sum<T: Serialize>(
             let delta = bcs::serialized_size(&tag)? + size_in_bytes;
             Ok(len + delta as u64)
         })
-        .map_err(|_: Error| anyhow::Error::msg("Resource group member tag serialization error"))
+        .map_err(|_: anyhow::Error| {
+            anyhow::Error::msg("Resource group member tag serialization error")
+        })
 }
 
 /// Handles the resolution of ResourceGroupView interfaces. If the gas feature version is
@@ -111,7 +113,7 @@ impl<'r> ResourceGroupAdapter<'r> {
 
     // Ensures that the resource group at state_key is cached in self.group_cache. Ok(true)
     // means the resource was already cached, while Ok(false) means it just got cached.
-    fn load_to_cache(&self, group_key: &StateKey) -> anyhow::Result<bool> {
+    fn load_to_cache(&self, group_key: &StateKey) -> PartialVMResult<bool> {
         let already_cached = self.group_cache.borrow().contains_key(group_key);
         if already_cached {
             return Ok(true);
@@ -119,10 +121,12 @@ impl<'r> ResourceGroupAdapter<'r> {
 
         let group_data = self.resource_view.get_resource_bytes(group_key, None)?;
         let (group_data, blob_len): (BTreeMap<StructTag, Bytes>, u64) = group_data.map_or_else(
-            || Ok::<_, Error>((BTreeMap::new(), 0)),
+            || Ok::<_, PartialVMError>((BTreeMap::new(), 0)),
             |group_data_blob| {
-                let group_data = bcs::from_bytes(&group_data_blob)
-                    .map_err(|_| anyhow::Error::msg("Resource group deserialization error"))?;
+                let group_data = bcs::from_bytes(&group_data_blob).map_err(|e| {
+                    PartialVMError::new(StatusCode::UNEXPECTED_DESERIALIZATION_ERROR)
+                        .with_message(format!("Resource group deserialization error: {}", e))
+                })?;
                 Ok((group_data, group_data_blob.len() as u64))
             },
         )?;
@@ -131,7 +135,10 @@ impl<'r> ResourceGroupAdapter<'r> {
             GroupSizeKind::None => 0,
             GroupSizeKind::AsBlob => blob_len,
             GroupSizeKind::AsSum => {
-                group_size_as_sum(group_data.iter().map(|(t, v)| (t, v.len())))?
+                // Note: AsSUm will be removed, so concrete error here does not matter.
+                group_size_as_sum(group_data.iter().map(|(t, v)| (t, v.len()))).map_err(|_| {
+                    PartialVMError::new(StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR)
+                })?
             },
         };
         self.group_cache
@@ -153,7 +160,7 @@ impl TResourceGroupView for ResourceGroupAdapter<'_> {
         self.group_size_kind == GroupSizeKind::AsSum
     }
 
-    fn resource_group_size(&self, group_key: &Self::GroupKey) -> anyhow::Result<u64> {
+    fn resource_group_size(&self, group_key: &Self::GroupKey) -> PartialVMResult<u64> {
         if self.group_size_kind == GroupSizeKind::None {
             return Ok(0);
         }
@@ -176,7 +183,7 @@ impl TResourceGroupView for ResourceGroupAdapter<'_> {
         group_key: &Self::GroupKey,
         resource_tag: &Self::ResourceTag,
         maybe_layout: Option<&MoveTypeLayout>,
-    ) -> anyhow::Result<Option<Bytes>> {
+    ) -> PartialVMResult<Option<Bytes>> {
         if let Some(group_view) = self.maybe_resource_group_view {
             return group_view.get_resource_from_group(group_key, resource_tag, maybe_layout);
         }
@@ -299,7 +306,7 @@ mod tests {
             true
         }
 
-        fn resource_group_size(&self, group_key: &Self::GroupKey) -> anyhow::Result<u64> {
+        fn resource_group_size(&self, group_key: &Self::GroupKey) -> PartialVMResult<u64> {
             Ok(self
                 .group
                 .get(group_key)
@@ -312,7 +319,7 @@ mod tests {
             group_key: &Self::GroupKey,
             resource_tag: &Self::ResourceTag,
             _maybe_layout: Option<&Self::Layout>,
-        ) -> anyhow::Result<Option<Bytes>> {
+        ) -> PartialVMResult<Option<Bytes>> {
             Ok(self
                 .group
                 .get(group_key)
@@ -323,7 +330,7 @@ mod tests {
             &self,
             _group_key: &Self::GroupKey,
             _resource_tag: &Self::ResourceTag,
-        ) -> anyhow::Result<u64> {
+        ) -> PartialVMResult<u64> {
             unimplemented!("Currently resolved by ResourceGroupAdapter");
         }
 
@@ -331,7 +338,7 @@ mod tests {
             &self,
             _group_key: &Self::GroupKey,
             _resource_tag: &Self::ResourceTag,
-        ) -> anyhow::Result<bool> {
+        ) -> PartialVMResult<bool> {
             unimplemented!("Currently resolved by ResourceGroupAdapter");
         }
 

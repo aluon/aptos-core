@@ -35,6 +35,7 @@ use aptos_types::{
 };
 #[cfg(feature = "testing")]
 use bytes::Bytes;
+use move_binary_format::errors::PartialVMResult;
 #[cfg(feature = "testing")]
 use move_core_types::language_storage::StructTag;
 #[cfg(feature = "testing")]
@@ -73,7 +74,7 @@ impl TAggregatorV1View for AptosBlankStorage {
     fn get_aggregator_v1_state_value(
         &self,
         _id: &Self::Identifier,
-    ) -> anyhow::Result<Option<StateValue>> {
+    ) -> PartialVMResult<Option<StateValue>> {
         Ok(None)
     }
 }

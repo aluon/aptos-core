@@ -10,8 +10,6 @@ use crate::{
         AsResourceGroupView, ResourceGroupResolver,
     },
 };
-#[allow(unused_imports)]
-use anyhow::{bail, Error};
 use aptos_aggregator::{
     bounded_math::SignedU128,
     resolver::{TAggregatorV1View, TDelayedFieldView},
@@ -135,7 +133,7 @@ impl<'e, E: ExecutorView> StorageAdapter<'e, E> {
         metadata: &[Metadata],
         // Question: Is maybe_layout = Some(..) iff the layout has an aggregator v2
         maybe_layout: Option<&MoveTypeLayout>,
-    ) -> Result<(Option<Bytes>, usize), VMError> {
+    ) -> PartialVMResult<(Option<Bytes>, usize)> {
         let resource_group = get_resource_group_from_metadata(struct_tag, metadata);
         if let Some(resource_group) = resource_group {
             // TODO[agg_v2](fix) pass the layout to resource groups
@@ -146,10 +144,9 @@ impl<'e, E: ExecutorView> StorageAdapter<'e, E> {
             ));
 
             let first_access = self.accessed_groups.borrow_mut().insert(key.clone());
-            let common_error = |e| -> VMError {
+            let common_error = |e| -> PartialVMError {
                 PartialVMError::new(StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR)
                     .with_message(format!("{}", e))
-                    .finish(Location::Undefined)
             };
 
             let buf = self
@@ -168,16 +165,11 @@ impl<'e, E: ExecutorView> StorageAdapter<'e, E> {
             Ok((buf, buf_size + group_size as usize))
         } else {
             let access_path = AccessPath::resource_access_path(*address, struct_tag.clone())
-                .map_err(|_| {
-                    PartialVMError::new(StatusCode::TOO_MANY_TYPE_NODES).finish(Location::Undefined)
-                })?;
+                .map_err(|_| PartialVMError::new(StatusCode::TOO_MANY_TYPE_NODES))?;
 
             let buf = self
                 .executor_view
-                .get_resource_bytes(&StateKey::access_path(access_path), maybe_layout)
-                .map_err(|_| {
-                    PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined)
-                })?;
+                .get_resource_bytes(&StateKey::access_path(access_path), maybe_layout)?;
             let buf_size = resource_size(&buf);
             Ok((buf, buf_size))
         }
@@ -191,7 +183,7 @@ impl<'e, E: ExecutorView> ResourceGroupResolver for StorageAdapter<'e, E> {
         self.resource_group_view.release_group_cache()
     }
 
-    fn resource_group_size(&self, group_key: &StateKey) -> anyhow::Result<u64> {
+    fn resource_group_size(&self, group_key: &StateKey) -> PartialVMResult<u64> {
         self.resource_group_view.resource_group_size(group_key)
     }
 
@@ -199,7 +191,7 @@ impl<'e, E: ExecutorView> ResourceGroupResolver for StorageAdapter<'e, E> {
         &self,
         group_key: &StateKey,
         resource_tag: &StructTag,
-    ) -> anyhow::Result<u64> {
+    ) -> PartialVMResult<u64> {
         self.resource_group_view
             .resource_size_in_group(group_key, resource_tag)
     }
@@ -208,7 +200,7 @@ impl<'e, E: ExecutorView> ResourceGroupResolver for StorageAdapter<'e, E> {
         &self,
         group_key: &StateKey,
         resource_tag: &StructTag,
-    ) -> anyhow::Result<bool> {
+    ) -> PartialVMResult<bool> {
         self.resource_group_view
             .resource_exists_in_group(group_key, resource_tag)
     }
@@ -224,6 +216,7 @@ impl<'e, E: ExecutorView> ResourceResolver for StorageAdapter<'e, E> {
         metadata: &[Metadata],
         maybe_layout: Option<&MoveTypeLayout>,
     ) -> anyhow::Result<(Option<Bytes>, usize)> {
+        // TODO: George FIXME
         Ok(self.get_any_resource_with_layout(address, struct_tag, metadata, maybe_layout)?)
     }
 }
@@ -243,14 +236,11 @@ impl<'e, E: ExecutorView> ModuleResolver for StorageAdapter<'e, E> {
         module.metadata
     }
 
-    fn get_module(&self, module_id: &ModuleId) -> Result<Option<Bytes>, Error> {
+    fn get_module(&self, module_id: &ModuleId) -> Result<Option<Bytes>, anyhow::Error> {
         let access_path = AccessPath::from(module_id);
         Ok(self
             .executor_view
-            .get_module_bytes(&StateKey::access_path(access_path))
-            .map_err(|_| {
-                PartialVMError::new(StatusCode::STORAGE_ERROR).finish(Location::Undefined)
-            })?)
+            .get_module_bytes(&StateKey::access_path(access_path))?)
     }
 }
 
@@ -260,11 +250,12 @@ impl<'e, E: ExecutorView> TableResolver for StorageAdapter<'e, E> {
         handle: &TableHandle,
         key: &[u8],
         layout: Option<&MoveTypeLayout>,
-    ) -> Result<Option<Bytes>, Error> {
-        self.executor_view.get_resource_bytes(
+    ) -> Result<Option<Bytes>, anyhow::Error> {
+        // TODO: George FIXME
+        Ok(self.executor_view.get_resource_bytes(
             &StateKey::table_item((*handle).into(), key.to_vec()),
             layout,
-        )
+        )?)
     }
 }
 
@@ -274,7 +265,7 @@ impl<'e, E: ExecutorView> TAggregatorV1View for StorageAdapter<'e, E> {
     fn get_aggregator_v1_state_value(
         &self,
         id: &Self::Identifier,
-    ) -> anyhow::Result<Option<StateValue>> {
+    ) -> PartialVMResult<Option<StateValue>> {
         self.executor_view.get_aggregator_v1_state_value(id)
     }
 }
@@ -379,7 +370,8 @@ impl<'e, E: ExecutorView> StateStorageView for StorageAdapter<'e, E> {
         self.executor_view.id()
     }
 
-    fn get_usage(&self) -> anyhow::Result<StateStorageUsage> {
+    fn get_usage(&self) -> PartialVMResult<StateStorageUsage> {
+        // TODO: George FIXME keep anyhow? or better stay uniform?
         self.executor_view.get_usage()
     }
 }
@@ -388,7 +380,7 @@ impl<'e, E: ExecutorView> StateValueMetadataResolver for StorageAdapter<'e, E> {
     fn get_module_state_value_metadata(
         &self,
         state_key: &StateKey,
-    ) -> anyhow::Result<Option<StateValueMetadataKind>> {
+    ) -> PartialVMResult<Option<StateValueMetadataKind>> {
         self.executor_view
             .get_module_state_value_metadata(state_key)
     }
@@ -396,7 +388,7 @@ impl<'e, E: ExecutorView> StateValueMetadataResolver for StorageAdapter<'e, E> {
     fn get_resource_state_value_metadata(
         &self,
         state_key: &StateKey,
-    ) -> anyhow::Result<Option<StateValueMetadataKind>> {
+    ) -> PartialVMResult<Option<StateValueMetadataKind>> {
         self.executor_view
             .get_resource_state_value_metadata(state_key)
     }

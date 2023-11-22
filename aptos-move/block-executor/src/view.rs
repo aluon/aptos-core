@@ -45,9 +45,10 @@ use aptos_vm_logging::{log_schema::AdapterLogSchema, prelude::*};
 use aptos_vm_types::resolver::{StateStorageView, TModuleView, TResourceGroupView, TResourceView};
 use bytes::Bytes;
 use claims::assert_ok;
+use move_binary_format::errors::{PartialVMError, PartialVMResult};
 use move_core_types::{
     value::{IdentifierMappingKind, MoveTypeLayout},
-    vm_status::{StatusCode, VMStatus},
+    vm_status::StatusCode,
 };
 use move_vm_types::{
     value_transformation::{
@@ -1307,7 +1308,7 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> LatestView<
         state_key: &T::Key,
         layout: UnknownOrLayout,
         kind: ReadKind,
-    ) -> anyhow::Result<ReadResult> {
+    ) -> PartialVMResult<ReadResult> {
         debug_assert!(
             state_key.module_path().is_none(),
             "Reading a module {:?} using ResourceView",
@@ -1333,7 +1334,12 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> LatestView<
             &|value, layout| self.patch_base_value(value, layout),
         );
         if matches!(ret, ReadResult::Uninitialized) {
-            let from_storage = self.get_base_value_with_layout(state_key, layout.clone())?;
+            let from_storage = self
+                .get_base_value_with_layout(state_key, layout.clone())
+                // TODO(George): fix me:
+                .map_err(|e| {
+                    PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+                })?;
             state.set_base_value(state_key.clone(), from_storage);
 
             // In case of concurrent storage fetches, we cannot use our value,
@@ -1354,10 +1360,10 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> LatestView<
             // will not log the speculative error,
             // so no actual error will be logged once the execution is halted and
             // the speculative logging is flushed.
-            ReadResult::HaltSpeculativeExecution(msg) => Err(anyhow::Error::new(VMStatus::error(
+            ReadResult::HaltSpeculativeExecution(msg) => Err(PartialVMError::new(
                 StatusCode::SPECULATIVE_EXECUTION_ABORT_ERROR,
-                Some(msg),
-            ))),
+            )
+            .with_message(msg)),
             ReadResult::Uninitialized => {
                 unreachable!("base value must already be recorded in the MV data structure")
             },
@@ -1406,7 +1412,7 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceVi
         &self,
         state_key: &Self::Key,
         maybe_layout: Option<&Self::Layout>,
-    ) -> anyhow::Result<Option<StateValue>> {
+    ) -> PartialVMResult<Option<StateValue>> {
         self.get_resource_state_value_impl(
             state_key,
             UnknownOrLayout::Known(maybe_layout),
@@ -1418,7 +1424,7 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceVi
     fn get_resource_state_value_metadata(
         &self,
         state_key: &Self::Key,
-    ) -> anyhow::Result<Option<StateValueMetadataKind>> {
+    ) -> PartialVMResult<Option<StateValueMetadataKind>> {
         self.get_resource_state_value_impl(state_key, UnknownOrLayout::Unknown, ReadKind::Metadata)
             .map(|res| {
                 if let ReadResult::Metadata(v) = res {
@@ -1429,7 +1435,7 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceVi
             })
     }
 
-    fn resource_exists(&self, state_key: &Self::Key) -> anyhow::Result<bool> {
+    fn resource_exists(&self, state_key: &Self::Key) -> PartialVMResult<bool> {
         self.get_resource_state_value_impl(state_key, UnknownOrLayout::Unknown, ReadKind::Exists)
             .map(|res| {
                 if let ReadResult::Exists(v) = res {
@@ -1448,18 +1454,44 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceGr
     type Layout = MoveTypeLayout;
     type ResourceTag = T::Tag;
 
-    fn resource_group_size(&self, group_key: &Self::GroupKey) -> anyhow::Result<u64> {
+    fn resource_group_size(&self, group_key: &Self::GroupKey) -> PartialVMResult<u64> {
         let mut group_read = match &self.latest_view {
-            ViewState::Sync(state) => state.read_group_size(group_key, self.txn_idx)?,
-            ViewState::Unsync(state) => state.unsync_map.get_group_size(group_key)?,
+            ViewState::Sync(state) => state
+                .read_group_size(group_key, self.txn_idx)
+                // TODO(George): fix me:
+                .map_err(|e| {
+                    PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+                })?,
+            ViewState::Unsync(state) => state
+                .unsync_map
+                .get_group_size(group_key)
+                // TODO(George): fix me:
+                .map_err(|e| {
+                    PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+                })?,
         };
 
         if matches!(group_read, GroupReadResult::Uninitialized) {
-            self.initialize_mvhashmap_base_group_contents(group_key)?;
+            self.initialize_mvhashmap_base_group_contents(group_key)
+                // TODO(George): fix me:
+                .map_err(|e| {
+                    PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+                })?;
 
             group_read = match &self.latest_view {
-                ViewState::Sync(state) => state.read_group_size(group_key, self.txn_idx)?,
-                ViewState::Unsync(state) => state.unsync_map.get_group_size(group_key)?,
+                ViewState::Sync(state) => state
+                    .read_group_size(group_key, self.txn_idx)
+                    // TODO(George): fix me:
+                    .map_err(|e| {
+                        PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+                    })?,
+                ViewState::Unsync(state) => state
+                    .unsync_map
+                    .get_group_size(group_key)
+                    // TODO(George): fix me:
+                    .map_err(|e| {
+                        PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+                    })?,
             }
         };
 
@@ -1471,7 +1503,7 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceGr
         group_key: &Self::GroupKey,
         resource_tag: &Self::ResourceTag,
         maybe_layout: Option<&Self::Layout>,
-    ) -> anyhow::Result<Option<Bytes>> {
+    ) -> PartialVMResult<Option<Bytes>> {
         let maybe_layout = maybe_layout.filter(|_| self.is_delayed_field_optimization_capable());
 
         let mut group_read = self
@@ -1483,10 +1515,18 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceGr
                 resource_tag,
                 maybe_layout,
                 &|value, layout| self.patch_base_value(value, layout),
-            )?;
+            )
+            // TODO(George): fix me:
+            .map_err(|e| {
+                PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+            })?;
 
         if matches!(group_read, GroupReadResult::Uninitialized) {
-            self.initialize_mvhashmap_base_group_contents(group_key)?;
+            self.initialize_mvhashmap_base_group_contents(group_key)
+                // TODO(George): fix me:
+                .map_err(|e| {
+                    PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+                })?;
 
             group_read = self
                 .latest_view
@@ -1497,7 +1537,11 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceGr
                     resource_tag,
                     maybe_layout,
                     &|value, layout| self.patch_base_value(value, layout),
-                )?;
+                )
+                // TODO(George): fix me:
+                .map_err(|e| {
+                    PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string())
+                })?;
         };
 
         Ok(group_read.into_value().0)
@@ -1507,7 +1551,7 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceGr
         &self,
         _group_key: &Self::GroupKey,
         _resource_tag: &Self::ResourceTag,
-    ) -> anyhow::Result<u64> {
+    ) -> PartialVMResult<u64> {
         unimplemented!("Currently resolved by ResourceGroupAdapter");
     }
 
@@ -1515,7 +1559,7 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TResourceGr
         &self,
         _group_key: &Self::GroupKey,
         _resource_tag: &Self::ResourceTag,
-    ) -> anyhow::Result<bool> {
+    ) -> PartialVMResult<bool> {
         unimplemented!("Currently resolved by ResourceGroupAdapter");
     }
 
@@ -1538,14 +1582,14 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TModuleView
 {
     type Key = T::Key;
 
-    fn get_module_state_value(&self, state_key: &Self::Key) -> anyhow::Result<Option<StateValue>> {
+    fn get_module_state_value(&self, state_key: &Self::Key) -> PartialVMResult<Option<StateValue>> {
         debug_assert!(
             state_key.module_path().is_some(),
             "Reading a resource {:?} using ModuleView",
             state_key,
         );
 
-        match &self.latest_view {
+        let r = match &self.latest_view {
             ViewState::Sync(state) => {
                 use MVModulesError::*;
                 use MVModulesOutput::*;
@@ -1565,7 +1609,10 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TModuleView
                 || self.get_raw_base_value(state_key),
                 |v| Ok(v.as_state_value()),
             ),
-        }
+        };
+
+        // TODO(George): fix me:
+        r.map_err(|e| PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string()))
     }
 }
 
@@ -1576,8 +1623,10 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> StateStorag
         self.base_view.id()
     }
 
-    fn get_usage(&self) -> anyhow::Result<StateStorageUsage> {
-        self.base_view.get_usage()
+    fn get_usage(&self) -> PartialVMResult<StateStorageUsage> {
+        self.base_view
+            .get_usage()
+            .map_err(|e| PartialVMError::new(StatusCode::STORAGE_ERROR).with_message(e.to_string()))
     }
 }
 
@@ -1589,7 +1638,7 @@ impl<'a, T: Transaction, S: TStateView<Key = T::Key>, X: Executable> TAggregator
     fn get_aggregator_v1_state_value(
         &self,
         state_key: &Self::Identifier,
-    ) -> anyhow::Result<Option<StateValue>> {
+    ) -> PartialVMResult<Option<StateValue>> {
         // TODO[agg_v1](cleanup):
         // Integrate aggregators V1. That is, we can lift the u128 value
         // from the state item by passing the right layout here. This can
