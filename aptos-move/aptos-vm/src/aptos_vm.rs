@@ -77,8 +77,8 @@ use move_core_types::{
     value::{serialize_values, MoveValue},
     vm_status::StatusType,
 };
-use move_vm_runtime::session::SerializedReturnValues;
-use move_vm_types::gas::UnmeteredGasMeter;
+use move_vm_runtime::{logging::expect_no_verification_errors, session::SerializedReturnValues};
+use move_vm_types::gas::{GasMeter, UnmeteredGasMeter};
 use num_cpus;
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
@@ -241,7 +241,7 @@ impl AptosVM {
     pub fn failed_transaction_cleanup(
         &self,
         error_code: VMStatus,
-        gas_meter: &impl AptosGasMeter,
+        gas_meter: &mut impl AptosGasMeter,
         txn_data: &TransactionMetadata,
         resolver: &impl AptosMoveResolver,
         log_context: &AdapterLogSchema,
@@ -303,12 +303,19 @@ impl AptosVM {
     fn failed_transaction_cleanup_and_keep_vm_status(
         &self,
         error_code: VMStatus,
-        gas_meter: &impl AptosGasMeter,
+        gas_meter: &mut impl AptosGasMeter,
         txn_data: &TransactionMetadata,
         resolver: &impl AptosMoveResolver,
         log_context: &AdapterLogSchema,
         change_set_configs: &ChangeSetConfigs,
     ) -> (VMStatus, VMOutput) {
+        let transaction_status = TransactionStatus::from_vm_status(
+            error_code.clone(),
+            self.vm_impl
+                .get_features()
+                .is_enabled(FeatureFlag::CHARGE_INVARIANT_VIOLATION),
+        );
+
         if self.vm_impl.get_gas_feature_version() >= 12 {
             // Check if the gas meter's internal counters are consistent.
             //
@@ -334,15 +341,49 @@ impl AptosVM {
         // Clear side effects: create new session and clear refunds from fee statement.
         let mut session = self
             .vm_impl
-            .new_session(resolver, SessionId::epilogue_meta(txn_data));
+            .new_session(resolver, SessionId::run_on_abort(txn_data));
+
+        if matches!(transaction_status, TransactionStatus::Keep(_))
+            && txn_data.fee_payer().is_some()
+            && txn_data.sequence_number == 0
+            && self
+                .vm_impl
+                .get_features()
+                .is_enabled(FeatureFlag::SPONSORED_AUTOMATIC_ACCOUNT_CREATION)
+        {
+            if let Err(err) =
+                create_account_if_does_not_exist(&mut session, gas_meter, txn_data.sender())
+                    .map_err(expect_no_verification_errors)
+                    .or_else(|err| {
+                        expect_only_successful_execution(
+                            err,
+                            &format!("{:?}::{}", ACCOUNT_MODULE, CREATE_ACCOUNT_IF_DOES_NOT_EXIST),
+                            log_context,
+                        )
+                    })
+            {
+                return discard_error_vm_status(err);
+            }
+        }
+
+        // Need to zero this out, because that's the legacy behavior. Otherwise we charge for txn
+        // size where we used to not.
+        let mut null_txn_data = txn_data.clone();
+        null_txn_data.transaction_size = 0.into();
+        let mut respawned_session = match self.charge_change_set_and_respawn_session(
+            session,
+            resolver,
+            gas_meter,
+            change_set_configs,
+            &null_txn_data,
+        ) {
+            Ok(respawned_session) => respawned_session,
+            Err(err) => return discard_error_vm_status(err),
+        };
+
         let fee_statement = AptosVM::fee_statement_from_gas_meter(txn_data, gas_meter, 0);
 
-        match TransactionStatus::from_vm_status(
-            error_code.clone(),
-            self.vm_impl
-                .get_features()
-                .is_enabled(FeatureFlag::CHARGE_INVARIANT_VIOLATION),
-        ) {
+        match transaction_status {
             TransactionStatus::Keep(status) => {
                 // Inject abort info if available.
                 let status = match status {
@@ -366,18 +407,27 @@ impl AptosVM {
                 // so even if the previous failure occurred while running the epilogue, it
                 // should not fail now. If it somehow fails here, there is no choice but to
                 // discard the transaction.
-                if let Err(e) = self.vm_impl.run_failure_epilogue(
-                    &mut session,
-                    gas_meter.balance(),
-                    fee_statement,
-                    txn_data,
-                    log_context,
-                ) {
+
+
+                if let Err(e) = respawned_session.execute(|session| {
+                    self.vm_impl.run_failure_epilogue(
+                        session,
+                        gas_meter.balance(),
+                        fee_statement,
+                        txn_data,
+                        log_context,
+                    )
+                }) {
                     return discard_error_vm_status(e);
                 }
-                let txn_output =
-                    get_transaction_output(session, fee_statement, status, change_set_configs)
-                        .unwrap_or_else(|e| discard_error_vm_status(e).1);
+
+                let txn_output = match respawned_session.finish(change_set_configs) {
+                    Ok(change_set) => {
+                        VMOutput::new(change_set, fee_statement, TransactionStatus::Keep(status))
+                    },
+                    Err(err) => discard_error_vm_status(err).1,
+                };
+
                 (error_code, txn_output)
             },
             TransactionStatus::Discard(status) => {
@@ -1306,25 +1356,19 @@ impl AptosVM {
                 .new_session(resolver, SessionId::txn_meta(&txn_data));
         }
 
-        if let aptos_types::transaction::authenticator::TransactionAuthenticator::FeePayer {
-            ..
-        } = &txn.authenticator_ref()
-        {
-            if self
+        let txn_data = TransactionMetadata::new(txn);
+        if txn_data.fee_payer().is_some()
+            && txn_data.sequence_number == 0
+            && self
                 .vm_impl
                 .get_features()
                 .is_enabled(FeatureFlag::SPONSORED_AUTOMATIC_ACCOUNT_CREATION)
+        {
+            if let Err(err) =
+                create_account_if_does_not_exist(&mut session, gas_meter, txn.sender())
             {
-                if let Err(err) = session.execute_function_bypass_visibility(
-                    &ACCOUNT_MODULE,
-                    CREATE_ACCOUNT_IF_DOES_NOT_EXIST,
-                    vec![],
-                    serialize_values(&vec![MoveValue::Address(txn.sender())]),
-                    gas_meter,
-                ) {
-                    return discard_error_vm_status(err.into());
-                };
-            }
+                return discard_error_vm_status(err.into());
+            };
         }
 
         let storage_gas_params =
@@ -2041,4 +2085,20 @@ impl AptosSimulationVM {
             .expect("Materializing aggregator V1 deltas should never fail");
         (vm_status, txn_output)
     }
+}
+
+fn create_account_if_does_not_exist(
+    session: &mut SessionExt,
+    gas_meter: &mut impl GasMeter,
+    account: AccountAddress,
+) -> VMResult<()> {
+    session
+        .execute_function_bypass_visibility(
+            &ACCOUNT_MODULE,
+            CREATE_ACCOUNT_IF_DOES_NOT_EXIST,
+            vec![],
+            serialize_values(&vec![MoveValue::Address(account)]),
+            gas_meter,
+        )
+        .map(|_return_vals| ())
 }

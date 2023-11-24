@@ -1,7 +1,7 @@
 // Copyright © Aptos Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{assert_success, MoveHarness};
+use crate::{assert_abort, assert_success, MoveHarness};
 use aptos_cached_packages::aptos_stdlib;
 use aptos_language_e2e_tests::{
     account::{Account, TransactionBuilder},
@@ -71,6 +71,76 @@ fn test_account_not_exist_with_fee_payer_create_account() {
     assert!(alice_after.is_none());
     let bob_after = h.read_aptos_balance(bob.address());
 
+    assert!(bob_start > bob_after);
+}
+
+#[test]
+fn test_account_not_exist_and_out_of_gas_with_fee_payer_create_account() {
+    // This should result in an aborted, yet committed transaction and an account created.
+    let mut h = MoveHarness::new_with_features(vec![FeatureFlag::GAS_PAYER_ENABLED], vec![]);
+
+    let alice = Account::new();
+    let bob = h.new_account_at(AccountAddress::from_hex_literal("0xb0b").unwrap());
+
+    let alice_start =
+        h.read_resource::<CoinStoreResource>(alice.address(), CoinStoreResource::struct_tag());
+    assert!(alice_start.is_none());
+    let bob_start = h.read_aptos_balance(bob.address());
+
+    let payload = aptos_stdlib::aptos_coin_transfer(*alice.address(), 1);
+    let transaction = TransactionBuilder::new(alice.clone())
+        .fee_payer(bob.clone())
+        .payload(payload)
+        .sequence_number(0)
+        .max_gas_amount(99_999) // This is not enough to execute this transaction
+        .gas_unit_price(1)
+        .sign_fee_payer();
+
+    let output = h.run_raw(transaction);
+    assert!(transaction_status_eq(
+        output.status(),
+        &TransactionStatus::Discard(StatusCode::MAX_GAS_UNITS_BELOW_MIN_TRANSACTION_GAS_UNITS)
+    ));
+
+    let alice_after =
+        h.read_resource::<CoinStoreResource>(alice.address(), CoinStoreResource::struct_tag());
+    assert!(alice_after.is_none());
+    let bob_after = h.read_aptos_balance(bob.address());
+    assert_eq!(bob_start, bob_after);
+}
+
+#[test]
+fn test_account_not_exist_and_abort_with_fee_payer_create_account() {
+    // This should result in an aborted, yet committed transaction and an account created.
+    let mut h = MoveHarness::new_with_features(vec![FeatureFlag::GAS_PAYER_ENABLED], vec![]);
+
+    let alice = Account::new();
+    let bob = h.new_account_at(AccountAddress::from_hex_literal("0xb0b").unwrap());
+
+    let alice_start =
+        h.read_resource::<CoinStoreResource>(alice.address(), CoinStoreResource::struct_tag());
+    assert!(alice_start.is_none());
+    let bob_start = h.read_aptos_balance(bob.address());
+
+    let payload = aptos_stdlib::aptos_coin_transfer(*alice.address(), 1);
+    let transaction = TransactionBuilder::new(alice.clone())
+        .fee_payer(bob.clone())
+        .payload(payload)
+        .sequence_number(0)
+        .max_gas_amount(100_000) // This is the minimum to execute this transaction
+        .gas_unit_price(1)
+        .sign_fee_payer();
+
+    let output = h.run_raw(transaction);
+    // ECOIN_STORE_NOT_PUBLISHED
+    assert_abort!(output.status(), 393221);
+
+    let alice_after =
+        h.read_resource::<CoinStoreResource>(alice.address(), CoinStoreResource::struct_tag());
+    assert!(alice_after.is_none());
+    let bob_after = h.read_aptos_balance(bob.address());
+
+    assert_eq!(h.sequence_number(alice.address()), 1);
     assert!(bob_start > bob_after);
 }
 

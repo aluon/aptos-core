@@ -11,6 +11,7 @@ use aptos_types::{
 };
 use std::convert::TryFrom;
 
+#[derive(Clone)]
 pub struct TransactionMetadata {
     pub sender: AccountAddress,
     pub authentication_key: Vec<u8>,
