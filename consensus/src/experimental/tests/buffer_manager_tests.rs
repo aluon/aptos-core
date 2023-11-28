@@ -24,6 +24,7 @@ use crate::{
         RandomComputeResultStateComputer,
     },
 };
+use aptos_bounded_executor::BoundedExecutor;
 use aptos_channels::{aptos_channel, message_queues::QueueStyle};
 use aptos_config::network_id::NetworkId;
 use aptos_consensus_types::{
@@ -44,6 +45,7 @@ use aptos_safety_rules::{PersistentSafetyStorage, SafetyRulesManager};
 use aptos_secure_storage::Storage;
 use aptos_types::{
     account_address::AccountAddress,
+    epoch_state::EpochState,
     ledger_info::LedgerInfo,
     validator_signer::ValidatorSigner,
     validator_verifier::{random_validator_verifier, ValidatorVerifier},
@@ -153,7 +155,10 @@ pub fn prepare_buffer_manager() -> (
         persisting_proxy,
         block_rx,
         buffer_reset_rx,
-        validators.clone(),
+        Arc::new(EpochState {
+            epoch: 1,
+            verifier: validators.clone(),
+        }),
     );
 
     (
@@ -201,12 +206,13 @@ pub fn launch_buffer_manager() -> (
         result_rx,
         validators,
     ) = prepare_buffer_manager();
+    let bounded_executor = BoundedExecutor::new(8, runtime.handle().clone());
 
     runtime.spawn(execution_schedule_phase_pipeline.start());
     runtime.spawn(execution_wait_phase_pipeline.start());
     runtime.spawn(signing_phase_pipeline.start());
     runtime.spawn(persisting_phase_pipeline.start());
-    runtime.spawn(buffer_manager.start());
+    runtime.spawn(buffer_manager.start(bounded_executor));
 
     (
         block_tx,

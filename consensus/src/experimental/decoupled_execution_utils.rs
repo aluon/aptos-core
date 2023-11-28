@@ -16,7 +16,7 @@ use crate::{
 };
 use aptos_channels::aptos_channel::Receiver;
 use aptos_consensus_types::common::Author;
-use aptos_types::{account_address::AccountAddress, validator_verifier::ValidatorVerifier};
+use aptos_types::{account_address::AccountAddress, epoch_state::EpochState};
 use futures::channel::mpsc::UnboundedReceiver;
 use std::sync::{atomic::AtomicU64, Arc};
 
@@ -30,7 +30,7 @@ pub fn prepare_phases_and_buffer_manager(
     persisting_proxy: Arc<dyn StateComputer>,
     block_rx: UnboundedReceiver<OrderedBlocks>,
     sync_rx: UnboundedReceiver<ResetRequest>,
-    verifier: ValidatorVerifier,
+    epoch_state: Arc<EpochState>,
 ) -> (
     PipelinePhase<ExecutionSchedulePhase>,
     PipelinePhase<ExecutionWaitPhase>,
@@ -105,7 +105,7 @@ pub fn prepare_phases_and_buffer_manager(
             persisting_phase_request_tx,
             block_rx,
             sync_rx,
-            verifier,
+            epoch_state,
             ongoing_tasks,
         ),
     )
