@@ -1,0 +1,88 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct R1 {
+        dummy_field: bool,
+    }
+    struct R2 {
+        dummy_field: bool,
+    }
+    struct R3 {
+        f: #0,
+    }
+    private fun foo1(a: address)
+        acquires M::R1(*)
+     {
+        BorrowGlobal(Immutable)<M::R1>(a);
+        Tuple()
+    }
+    private fun foo2(a: address)
+        acquires M::R2(*)
+     {
+        BorrowGlobal(Immutable)<M::R2>(a);
+        Tuple()
+    }
+    private fun t0(a: address)
+        acquires M::R1(*)
+        acquires M::R2(*)
+     {
+        BorrowGlobal(Immutable)<M::R1>(a);
+        BorrowGlobal(Immutable)<M::R2>(a);
+        Tuple()
+    }
+    private fun t1(a: address)
+        acquires M::R1(*)
+        acquires M::R2(*)
+     {
+        BorrowGlobal(Mutable)<M::R1>(a);
+        BorrowGlobal(Mutable)<M::R2>(a);
+        Tuple()
+    }
+    private fun t2(a: address)
+        acquires M::R1(*)
+        acquires M::R2(*)
+     {
+        M::R1{ dummy_field: _ } = MoveFrom<M::R1>(a);
+        M::R2{ dummy_field: _ } = BorrowGlobal(Mutable)<M::R2>(a);
+        Tuple()
+    }
+    private fun t3(a: address)
+        acquires M::R1(*)
+        acquires M::R2(*)
+     {
+        M::foo1(a);
+        M::foo2(a);
+        Tuple()
+    }
+    private fun t4(account: &signer,a: address) {
+        exists<M::R1>(a);
+        exists<M::R2>(a);
+        MoveTo<M::R1>(account, pack M::R1(false));
+        MoveTo<M::R2>(account, pack M::R2(false));
+        Tuple()
+    }
+    private fun t5(a: address)
+        acquires M::R3(*)
+     {
+        M::R3<u64>{ f: _ } = MoveFrom<M::R3<u64>>(a);
+        M::R3<M::R1>{ f: _ } = MoveFrom<M::R3<M::R1>>(a);
+        BorrowGlobal(Mutable)<M::R3<bool>>(a);
+        BorrowGlobal(Mutable)<M::R3<M::R2>>(a);
+        Tuple()
+    }
+    private fun t6(account: &signer,a: address) {
+        exists<M::R3<u64>>(a);
+        exists<M::R3<M::R1>>(a);
+        MoveTo<M::R3<bool>>(account, pack M::R3<bool>(true));
+        MoveTo<M::R3<M::R2>>(account, pack M::R3<M::R2>(pack M::R2(false)));
+        Tuple()
+    }
+    spec fun $foo1(a: address);
+    spec fun $foo2(a: address);
+    spec fun $t0(a: address);
+    spec fun $t1(a: address);
+    spec fun $t2(a: address);
+    spec fun $t3(a: address);
+    spec fun $t4(account: &signer,a: address);
+    spec fun $t5(a: address);
+    spec fun $t6(account: &signer,a: address);
+} // end 0x8675309::M

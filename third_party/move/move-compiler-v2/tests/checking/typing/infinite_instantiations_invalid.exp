@@ -1,0 +1,85 @@
+// ---- Model Dump
+module 0x42::X {
+    struct Box {
+        f: #0,
+    }
+    public fun a<A>() {
+        X::b<A>()
+    }
+    public fun b<B>() {
+        X::c<B>()
+    }
+    public fun c<C>() {
+        X::a<X::Box<C>>()
+    }
+    public fun t<T>() {
+        X::t<X::Box<T>>()
+    }
+    public fun x<T>() {
+        X::y<X::Box<T>>()
+    }
+    public fun y<T>() {
+        X::x<X::Box<T>>()
+    }
+    spec fun $a<A>();
+    spec fun $b<B>();
+    spec fun $c<C>();
+    spec fun $t<T>();
+    spec fun $x<T>();
+    spec fun $y<T>();
+} // end 0x42::X
+module 0x42::Y {
+    struct Box {
+        f: #0,
+    }
+    public fun a<A>() {
+        Y::b<A>()
+    }
+    public fun b<B>() {
+        Y::c<B>()
+    }
+    public fun c<C>() {
+        Y::d<Y::Box<C>>()
+    }
+    public fun x<T>() {
+        Y::y<Y::Box<T>>()
+    }
+    public fun y<T>() {
+        Y::z<Y::Box<T>>()
+    }
+    public fun d<D>() {
+        Y::a<D>()
+    }
+    public fun z<T>() {
+        Y::z<Y::Box<T>>()
+    }
+    spec fun $a<A>();
+    spec fun $b<B>();
+    spec fun $c<C>();
+    spec fun $d<D>();
+    spec fun $x<T>();
+    spec fun $y<T>();
+    spec fun $z<T>();
+} // end 0x42::Y
+module 0x42::Z {
+    struct Box {
+        f: #0,
+    }
+    public fun bl<BL>() {
+        Z::tl<BL>()
+    }
+    public fun br<BR>() {
+        Z::bl<BR>()
+    }
+    public fun tl<TL>() {
+        Z::tr<TL>()
+    }
+    public fun tr<TR>() {
+        Z::bl<Z::Box<TR>>();
+        Z::br<TR>()
+    }
+    spec fun $bl<BL>();
+    spec fun $br<BR>();
+    spec fun $tl<TL>();
+    spec fun $tr<TR>();
+} // end 0x42::Z

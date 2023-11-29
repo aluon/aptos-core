@@ -1,0 +1,21 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct B {
+        s: M::S,
+        r: M::R,
+    }
+    struct R {
+        dummy_field: bool,
+    }
+    struct S {
+        dummy_field: bool,
+    }
+    private fun t1(b: M::B,bref: &M::B) {
+        select M::B.s(b);
+        M::R{ dummy_field: _ } = select M::B.r(b);
+        select M::B.s(bref);
+        M::R{ dummy_field: _ } = select M::B.r(bref);
+        Tuple()
+    }
+    spec fun $t1(b: M::B,bref: &M::B);
+} // end 0x8675309::M

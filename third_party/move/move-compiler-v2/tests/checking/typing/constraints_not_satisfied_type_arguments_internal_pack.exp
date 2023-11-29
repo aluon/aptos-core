@@ -1,0 +1,18 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct Box {
+        f: #0,
+    }
+    struct CupD {
+        f: #0,
+    }
+    struct R {
+        dummy_field: bool,
+    }
+    private fun foo() {
+        pack M::Box<M::CupD<M::R>>(Abort(0));
+        pack M::Box<M::R>(pack M::R(false));
+        Tuple()
+    }
+    spec fun $foo();
+} // end 0x8675309::M

@@ -1,0 +1,20 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct B {
+        dummy_field: bool,
+    }
+    struct CupC {
+        dummy_field: bool,
+    }
+    struct R {
+        dummy_field: bool,
+    }
+    private fun foo() {
+        {
+          let M::B<M::CupC<M::R>>{ dummy_field: _ } = Abort(0);
+          M::B<M::CupC<M::R>>{ dummy_field: _ } = Abort(0);
+          Tuple()
+        }
+    }
+    spec fun $foo();
+} // end 0x8675309::M

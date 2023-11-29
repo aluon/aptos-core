@@ -1,0 +1,90 @@
+// ---- Model Dump
+module 0x42::M {
+    struct Box {
+        f: #0,
+    }
+    struct Cup {
+        f: #0,
+    }
+    struct NoC {
+        dummy_field: bool,
+    }
+    struct NoK {
+        dummy_field: bool,
+    }
+    struct Pair {
+        f1: #0,
+        f2: #1,
+    }
+    struct Sc {
+        dummy_field: bool,
+    }
+    struct Scds {
+        dummy_field: bool,
+    }
+    struct Sk {
+        dummy_field: bool,
+    }
+    private fun c<T>() {
+        Tuple()
+    }
+    private fun cds<T>() {
+        Tuple()
+    }
+    private fun k<T>() {
+        Tuple()
+    }
+    private fun t() {
+        M::c<signer>();
+        M::c<vector<signer>>();
+        M::c<vector<M::NoC>>();
+        M::k<u64>();
+        M::k<signer>();
+        M::k<vector<M::NoC>>();
+        M::k<vector<M::NoK>>();
+        M::cds<signer>();
+        M::cds<vector<M::NoC>>();
+        M::cds<vector<M::Cup<u8>>>();
+        {
+          let M::Sc<signer>{ dummy_field: _ } = pack M::Sc<signer>(false);
+          {
+            let M::Sc<vector<signer>>{ dummy_field: _ } = pack M::Sc<vector<signer>>(false);
+            {
+              let M::Sc<vector<M::NoC>>{ dummy_field: _ } = pack M::Sc<vector<M::NoC>>(false);
+              {
+                let M::Sk<u64>{ dummy_field: _ } = pack M::Sk<u64>(false);
+                {
+                  let M::Sk<signer>{ dummy_field: _ } = pack M::Sk<signer>(false);
+                  {
+                    let M::Sk<vector<M::NoC>>{ dummy_field: _ } = pack M::Sk<vector<M::NoC>>(false);
+                    {
+                      let M::Sk<vector<M::NoK>>{ dummy_field: _ } = pack M::Sk<vector<M::NoK>>(false);
+                      {
+                        let M::Scds<signer>{ dummy_field: _ } = pack M::Scds<signer>(false);
+                        {
+                          let M::Scds<vector<M::NoC>>{ dummy_field: _ } = pack M::Scds<vector<M::NoC>>(false);
+                          {
+                            let M::Scds<vector<M::Cup<u8>>>{ dummy_field: _ } = pack M::Scds<vector<M::Cup<u8>>>(false);
+                            Tuple()
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    }
+    spec fun $c<T>() {
+        Tuple()
+    }
+    spec fun $cds<T>() {
+        Tuple()
+    }
+    spec fun $k<T>() {
+        Tuple()
+    }
+    spec fun $t();
+} // end 0x42::M

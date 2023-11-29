@@ -1,0 +1,27 @@
+// ---- Model Dump
+module 0x43::C {
+    struct T {
+        dummy_field: bool,
+    }
+} // end 0x43::C
+module 0x42::B {
+    use 0x43::C; // resolved as: 0x43::C
+    public fun bar(c: C::T) {
+        {
+          let C::T{ dummy_field: _ } = c;
+          Tuple()
+        }
+    }
+    public fun foo(): C::T {
+        pack C::T(false)
+    }
+    spec fun $bar(c: C::T) {
+        {
+          let C::T{ dummy_field: _ } = c;
+          Tuple()
+        }
+    }
+    spec fun $foo(): C::T {
+        pack C::T(false)
+    }
+} // end 0x42::B

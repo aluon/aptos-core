@@ -1,0 +1,30 @@
+// ---- Model Dump
+module 0x42::M {
+    struct HasCopy {
+        a: #1,
+    }
+    struct HasDrop {
+        a: #1,
+    }
+    struct HasKey {
+        a: #1,
+    }
+    struct HasStore {
+        a: #1,
+    }
+    struct NoAbilities {
+        dummy_field: bool,
+    }
+    struct S1 {
+        a: M::HasDrop<M::NoAbilities, M::NoAbilities>,
+    }
+    struct S2 {
+        a: M::HasCopy<M::NoAbilities, M::NoAbilities>,
+    }
+    struct S3 {
+        a: M::HasStore<M::NoAbilities, M::NoAbilities>,
+    }
+    struct S4 {
+        a: M::HasStore<M::NoAbilities, M::NoAbilities>,
+    }
+} // end 0x42::M

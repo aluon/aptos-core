@@ -1,0 +1,15 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct CupC {
+        f: #0,
+    }
+    struct R {
+        dummy_field: bool,
+    }
+    private fun foo(): M::CupC<M::R> {
+        Abort(0)
+    }
+    spec fun $foo(): M::CupC<M::R> {
+        Abort(0)
+    }
+} // end 0x8675309::M

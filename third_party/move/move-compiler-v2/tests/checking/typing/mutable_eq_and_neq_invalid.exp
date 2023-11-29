@@ -1,0 +1,46 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct B {
+        f: bool,
+    }
+    struct P {
+        b1: M::B,
+        b2: M::B,
+    }
+    private fun t0(p: &mut M::P) {
+        {
+          let f: &mut bool = Borrow(Mutable)(select M::B.f(select M::P.b1(p)));
+          {
+            let comp: bool = Eq<M::B>(Borrow(Mutable)(select M::P.b1(p)), Borrow(Mutable)(select M::P.b2(p)));
+            f = comp
+          }
+        }
+    }
+    private fun t1(p: &mut M::P) {
+        {
+          let f: &mut bool = Borrow(Mutable)(select M::B.f(select M::P.b1(p)));
+          {
+            let comp: bool = Neq<M::B>(Borrow(Mutable)(select M::P.b1(p)), Borrow(Mutable)(select M::P.b2(p)));
+            f = comp
+          }
+        }
+    }
+    spec fun $t0(p: M::P) {
+        {
+          let f: bool = select M::B.f(select M::P.b1(p));
+          {
+            let comp: bool = Eq<M::B>(select M::P.b1(p), select M::P.b2(p));
+            f = comp
+          }
+        }
+    }
+    spec fun $t1(p: M::P) {
+        {
+          let f: bool = select M::B.f(select M::P.b1(p));
+          {
+            let comp: bool = Neq<M::B>(select M::P.b1(p), select M::P.b2(p));
+            f = comp
+          }
+        }
+    }
+} // end 0x8675309::M

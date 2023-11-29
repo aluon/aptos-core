@@ -1,0 +1,24 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct Coin {
+        dummy_field: bool,
+    }
+    struct R {
+        r: #0,
+    }
+    struct S {
+        c: #0,
+    }
+    private fun t0() {
+        M::R<?2>{ r: _ } = pack M::R<u64>(0);
+        pack M::S<M::Coin>(pack M::Coin(false));
+        Tuple()
+    }
+    private fun t1() {
+        M::R<M::R<?3>>{ r: M::R<?6>{ r: _ } } = pack M::R<M::R<u64>>(pack M::R<u64>(0));
+        pack M::S<M::S<M::Coin>>(pack M::S<M::Coin>(pack M::Coin(false)));
+        Tuple()
+    }
+    spec fun $t0();
+    spec fun $t1();
+} // end 0x8675309::M

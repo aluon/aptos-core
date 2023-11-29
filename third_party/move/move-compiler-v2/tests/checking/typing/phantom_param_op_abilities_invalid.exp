@@ -1,0 +1,66 @@
+// ---- Model Dump
+module 0x42::M {
+    struct HasCopy {
+        a: #1,
+    }
+    struct HasDrop {
+        a: #1,
+    }
+    struct HasKey {
+        a: #1,
+    }
+    struct HasStore {
+        a: #1,
+    }
+    struct NoAbilities {
+        dummy_field: bool,
+    }
+    struct RequireStore {
+        a: #0,
+    }
+    private fun f1(ref: &mut M::HasDrop<M::NoAbilities, M::NoAbilities>) {
+        ref = pack M::HasDrop<M::NoAbilities, M::NoAbilities>(pack M::NoAbilities(false));
+        Tuple()
+    }
+    private fun f2() {
+        _ = pack M::HasDrop<M::NoAbilities, M::NoAbilities>(pack M::NoAbilities(false));
+        Tuple()
+    }
+    private fun f3(_x: M::HasDrop<M::NoAbilities, M::NoAbilities>) {
+        Tuple()
+    }
+    private fun f4(x: M::HasCopy<M::NoAbilities, M::NoAbilities>): (M::HasCopy<M::NoAbilities, M::NoAbilities>, M::HasCopy<M::NoAbilities, M::NoAbilities>) {
+        Tuple(Copy(x), x)
+    }
+    private fun f5(s: &signer,x: M::HasKey<M::NoAbilities, M::NoAbilities>) {
+        MoveTo<M::HasKey<M::NoAbilities, M::NoAbilities>>(s, x);
+        Tuple()
+    }
+    private fun f6(): M::HasKey<M::NoAbilities, M::NoAbilities>
+        acquires M::HasKey(*)
+     {
+        MoveFrom<M::HasKey<M::NoAbilities, M::NoAbilities>>(0x0)
+    }
+    private fun f7(): bool {
+        exists<M::HasKey<M::NoAbilities, M::NoAbilities>>(0x0)
+    }
+    private fun f8(): M::RequireStore<M::HasStore<M::NoAbilities, M::NoAbilities>> {
+        pack M::RequireStore<M::HasStore<M::NoAbilities, M::NoAbilities>>(pack M::HasStore<M::NoAbilities, M::NoAbilities>(pack M::NoAbilities(false)))
+    }
+    spec fun $f1(ref: &mut M::HasDrop<M::NoAbilities, M::NoAbilities>);
+    spec fun $f2();
+    spec fun $f3(_x: M::HasDrop<M::NoAbilities, M::NoAbilities>) {
+        Tuple()
+    }
+    spec fun $f4(x: M::HasCopy<M::NoAbilities, M::NoAbilities>): (M::HasCopy<M::NoAbilities, M::NoAbilities>, M::HasCopy<M::NoAbilities, M::NoAbilities>) {
+        Tuple(Copy(x), x)
+    }
+    spec fun $f5(s: &signer,x: M::HasKey<M::NoAbilities, M::NoAbilities>);
+    spec fun $f6(): M::HasKey<M::NoAbilities, M::NoAbilities>;
+    spec fun $f7(): bool {
+        exists<M::HasKey<M::NoAbilities, M::NoAbilities>>(0x0)
+    }
+    spec fun $f8(): M::RequireStore<M::HasStore<M::NoAbilities, M::NoAbilities>> {
+        pack M::RequireStore<M::HasStore<M::NoAbilities, M::NoAbilities>>(pack M::HasStore<M::NoAbilities, M::NoAbilities>(pack M::NoAbilities(false)))
+    }
+} // end 0x42::M

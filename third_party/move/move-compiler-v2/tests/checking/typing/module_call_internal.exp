@@ -1,0 +1,18 @@
+// ---- Model Dump
+module 0x2::X {
+    private fun foo() {
+        Tuple()
+    }
+    spec fun $foo() {
+        Tuple()
+    }
+} // end 0x2::X
+module 0x2::M {
+    use 0x2::X; // resolved as: 0x2::X
+    private fun foo() {
+        X::foo()
+    }
+    spec fun $foo() {
+        X::$foo()
+    }
+} // end 0x2::M

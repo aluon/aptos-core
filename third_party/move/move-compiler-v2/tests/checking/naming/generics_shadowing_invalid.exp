@@ -9,7 +9,7 @@ error: expected `M::S` but found `S`
 error: expected `S` but found `M::S`
   ┌─ tests/checking/naming/generics_shadowing_invalid.move:8:20
   │
-8 │         let s: S = S {};
+8 │         let s: S = S {}; // TODO error? should this try to construct the generic ?
   │                    ^^^^
 
 error: invalid call of `M::bar`: expected `M::S` but found `S` for argument 1

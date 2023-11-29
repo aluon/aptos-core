@@ -1,0 +1,27 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct R1 {
+        dummy_field: bool,
+    }
+    struct R2 {
+        dummy_field: bool,
+    }
+    private fun r1(a: address)
+        acquires M::R1(*)
+     {
+        BorrowGlobal(Immutable)<M::R1>(a);
+        Tuple()
+    }
+    private fun t1(a: address)
+        acquires M::R2(*)
+     {
+        BorrowGlobal(Immutable)<M::R2>(a);
+        M::r1(a);
+        BorrowGlobal(Immutable)<M::R1>(a);
+        BorrowGlobal(Mutable)<M::R1>(a);
+        M::R1{ dummy_field: _ } = MoveFrom<M::R1>(a);
+        Tuple()
+    }
+    spec fun $r1(a: address);
+    spec fun $t1(a: address);
+} // end 0x8675309::M

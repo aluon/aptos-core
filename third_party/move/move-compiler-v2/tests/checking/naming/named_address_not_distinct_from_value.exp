@@ -1,0 +1,31 @@
+
+Diagnostics:
+error: address with no value
+  ┌─ tests/checking/naming/named_address_not_distinct_from_value.move:5:8
+  │
+5 │ module A::M {
+  │        ^ address 'A' is not assigned a value. Try assigning it a value when calling the compiler
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_not_distinct_from_value.move:11:8
+   │
+11 │ module A::Ex0 {
+   │        ^ address 'A' is not assigned a value. Try assigning it a value when calling the compiler
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_not_distinct_from_value.move:15:8
+   │
+15 │ module A::Ex1 {
+   │        ^ address 'A' is not assigned a value. Try assigning it a value when calling the compiler
+
+error: unbound module
+   ┌─ tests/checking/naming/named_address_not_distinct_from_value.move:16:9
+   │
+16 │     use 0x42::M;
+   │         ^^^^^^^ Invalid 'use'. Unbound module: '0x42::M'
+
+error: unbound module
+   ┌─ tests/checking/naming/named_address_not_distinct_from_value.move:22:23
+   │
+22 │     public fun ex2(): M::S {
+   │                       ^ Unbound module alias 'M'

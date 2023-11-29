@@ -1,0 +1,19 @@
+
+Diagnostics:
+error: invalid access specifier
+   ┌─ tests/checking/typing/invalid_type_acquire.move:18:9
+   │
+18 │         T,
+   │         ^
+
+error: invalid access specifier
+   ┌─ tests/checking/typing/invalid_type_acquire.move:19:9
+   │
+19 │         u64,
+   │         ^^^
+
+error: unable to infer type: `?5`
+   ┌─ tests/checking/typing/invalid_type_acquire.move:30:26
+   │
+30 │         destroy(account, move_from(a));
+   │                          ^^^^^^^^^^^^

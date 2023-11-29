@@ -1,0 +1,12 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct B {
+        f: M::CupC<M::R>,
+    }
+    struct CupC {
+        f: #0,
+    }
+    struct R {
+        dummy_field: bool,
+    }
+} // end 0x8675309::M

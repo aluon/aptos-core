@@ -1,0 +1,84 @@
+// ---- Model Dump
+module 0x42::M {
+    struct Box {
+        f: #0,
+    }
+    struct Cup {
+        f: #0,
+    }
+    struct Pair {
+        f1: #0,
+        f2: #1,
+    }
+    struct Sc {
+        dummy_field: bool,
+    }
+    struct Scds {
+        dummy_field: bool,
+    }
+    struct Sk {
+        dummy_field: bool,
+    }
+    private fun c<T>() {
+        Tuple()
+    }
+    private fun cds<T>() {
+        Tuple()
+    }
+    private fun k<T>() {
+        Tuple()
+    }
+    private fun t<TnoC,TnoK,T>() {
+        M::c<TnoC>();
+        M::c<M::Cup<TnoK>>();
+        M::c<M::Box<TnoC>>();
+        M::k<TnoK>();
+        M::k<M::Cup<TnoC>>();
+        M::k<M::Box<M::Cup<TnoC>>>();
+        M::cds<TnoC>();
+        M::cds<M::Cup<TnoC>>();
+        M::cds<M::Cup<TnoK>>();
+        M::cds<M::Pair<u64, TnoC>>();
+        {
+          let M::Sc<TnoC>{ dummy_field: _ } = pack M::Sc<TnoC>(false);
+          {
+            let M::Sc<M::Cup<TnoK>>{ dummy_field: _ } = pack M::Sc<M::Cup<TnoK>>(false);
+            {
+              let M::Sc<M::Box<TnoC>>{ dummy_field: _ } = pack M::Sc<M::Box<TnoC>>(false);
+              {
+                let M::Sk<TnoK>{ dummy_field: _ } = pack M::Sk<TnoK>(false);
+                {
+                  let M::Sk<M::Cup<TnoC>>{ dummy_field: _ } = pack M::Sk<M::Cup<TnoC>>(false);
+                  {
+                    let M::Sk<M::Box<M::Cup<TnoC>>>{ dummy_field: _ } = pack M::Sk<M::Box<M::Cup<TnoC>>>(false);
+                    {
+                      let M::Scds<TnoC>{ dummy_field: _ } = pack M::Scds<TnoC>(false);
+                      {
+                        let M::Scds<M::Cup<TnoC>>{ dummy_field: _ } = pack M::Scds<M::Cup<TnoC>>(false);
+                        {
+                          let M::Scds<M::Cup<TnoK>>{ dummy_field: _ } = pack M::Scds<M::Cup<TnoK>>(false);
+                          {
+                            let M::Scds<M::Pair<u64, TnoC>>{ dummy_field: _ } = pack M::Scds<M::Pair<u64, TnoC>>(false);
+                            Tuple()
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    }
+    spec fun $c<T>() {
+        Tuple()
+    }
+    spec fun $cds<T>() {
+        Tuple()
+    }
+    spec fun $k<T>() {
+        Tuple()
+    }
+    spec fun $t<TnoC,TnoK,T>();
+} // end 0x42::M

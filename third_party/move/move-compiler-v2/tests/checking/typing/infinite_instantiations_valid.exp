@@ -1,0 +1,35 @@
+// ---- Model Dump
+module 0x42::M {
+    struct Box {
+        f: #0,
+    }
+    public fun t0<T>() {
+        M::t1<T>();
+        M::t0<T>()
+    }
+    public fun t1<T>() {
+        M::t0<T>();
+        M::t1<T>()
+    }
+    public fun x<T>() {
+        M::y<M::Box<T>>()
+    }
+    public fun y<T>() {
+        M::z<M::Box<T>>()
+    }
+    public fun z<T>() {
+        M::z<T>()
+    }
+    spec fun $t0<T>();
+    spec fun $t1<T>();
+    spec fun $x<T>();
+    spec fun $y<T>();
+    spec fun $z<T>();
+} // end 0x42::M
+module 0x42::N {
+    use 0x42::M; // resolved as: 0x42::M
+    public fun t<T>() {
+        M::t0<M::Box<T>>()
+    }
+    spec fun $t<T>();
+} // end 0x42::N

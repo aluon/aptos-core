@@ -1,0 +1,7 @@
+
+Diagnostics:
+error: invalid type instantiation `()`: only structs, vectors, and primitive types allowed
+  ┌─ tests/checking/typing/pack_unit.move:5:9
+  │
+5 │         Box { f: () };
+  │         ^^^^^^^^^^^^^

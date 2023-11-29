@@ -1,0 +1,32 @@
+// ---- Model Dump
+module 0x42::m {
+    struct S {
+        f1: u64,
+        f2: u64,
+        f3: u64,
+        f4: u64,
+    }
+    public fun consume(_: m::S) {
+        Abort(0)
+    }
+    spec fun $consume(_: m::S) {
+        Abort(0)
+    }
+} // end 0x42::m
+module 0x42::n {
+    use 0x42::m::{S}; // resolved as: 0x42::m
+    private fun f() {
+        {
+          let s: m::S = {
+            let $f1: u64 = 0;
+            {
+              let $f4: u64 = 0;
+              pack m::S($f1, 0, 0, $f4)
+            }
+          };
+          m::consume(s);
+          Tuple()
+        }
+    }
+    spec fun $f();
+} // end 0x42::n

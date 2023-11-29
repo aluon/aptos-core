@@ -1,0 +1,36 @@
+// ---- Model Dump
+module 0x42::M0 {
+    struct Bar {
+        f: M0::Cup<M0::Bar>,
+    }
+    struct Cup {
+        f: #0,
+    }
+    struct Foo {
+        f: M0::Foo,
+    }
+    struct X {
+        y: vector<M0::Y>,
+    }
+    struct Y {
+        x: vector<M0::X>,
+    }
+} // end 0x42::M0
+module 0x42::M1 {
+    use 0x42::M0; // resolved as: 0x42::M0
+    struct Foo {
+        f: M0::Cup<M1::Foo>,
+    }
+    struct A {
+        b: M1::B,
+    }
+    struct B {
+        c: M1::C,
+    }
+    struct C {
+        d: vector<M1::D>,
+    }
+    struct D {
+        x: M0::Cup<M0::Cup<M0::Cup<M1::A>>>,
+    }
+} // end 0x42::M1

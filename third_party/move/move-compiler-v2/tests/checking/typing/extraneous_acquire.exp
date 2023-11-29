@@ -1,0 +1,25 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct R1 {
+        dummy_field: bool,
+    }
+    struct R2 {
+        dummy_field: bool,
+    }
+    private fun t0()
+        acquires M::R1(*)
+     {
+        Tuple()
+    }
+    private fun t1(a: address)
+        acquires M::R1(*)
+        acquires M::R2(*)
+     {
+        BorrowGlobal(Immutable)<M::R1>(a);
+        Tuple()
+    }
+    spec fun $t0() {
+        Tuple()
+    }
+    spec fun $t1(a: address);
+} // end 0x8675309::M

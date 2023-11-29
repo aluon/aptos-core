@@ -1,0 +1,81 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct Box {
+        f: #0,
+    }
+    struct Box3 {
+        f1: #0,
+        f2: #1,
+        f3: #2,
+    }
+    struct Coin {
+        dummy_field: bool,
+    }
+    struct S {
+        dummy_field: bool,
+    }
+    private fun both<R,C>(_r: #0,_c: #1) {
+        Abort(0)
+    }
+    private fun cpy<C>(_c: #0) {
+        Abort(0)
+    }
+    private fun new_box<T>(): M::Box<#0> {
+        Abort(0)
+    }
+    private fun new_box3<T1,T2,T3>(): M::Box3<#0, #1, #2> {
+        Abort(0)
+    }
+    private fun rsrc<R>(_r: #0) {
+        Abort(0)
+    }
+    private fun t0() {
+        M::both<M::S, M::Coin>(pack M::S(false), pack M::Coin(false));
+        M::both<u64, M::Coin>(0, pack M::Coin(false))
+    }
+    private fun t1<R,C>() {
+        M::both<M::Box<C>, M::Box<R>>(M::new_box<C>(), M::new_box<R>())
+    }
+    private fun t2<R,C>() {
+        M::rsrc<M::Box3<C, C, C>>(M::new_box3<C, C, C>());
+        M::cpy<M::Box3<R, C, C>>(M::new_box3<R, C, C>());
+        M::cpy<M::Box3<C, R, C>>(M::new_box3<C, R, C>());
+        M::cpy<M::Box3<C, C, R>>(M::new_box3<C, C, R>());
+        M::cpy<M::Box3<C, R, R>>(M::new_box3<C, R, R>());
+        M::cpy<M::Box3<R, C, R>>(M::new_box3<R, C, R>());
+        M::cpy<M::Box3<R, R, C>>(M::new_box3<R, R, C>());
+        M::cpy<M::Box3<R, R, R>>(M::new_box3<R, R, R>());
+        Tuple()
+    }
+    private fun t3<U,C>() {
+        M::cpy<M::Box3<U, C, C>>(M::new_box3<U, C, C>());
+        M::cpy<M::Box3<C, U, C>>(M::new_box3<C, U, C>());
+        M::cpy<M::Box3<C, C, U>>(M::new_box3<C, C, U>());
+        M::cpy<M::Box3<C, U, U>>(M::new_box3<C, U, U>());
+        M::cpy<M::Box3<U, C, U>>(M::new_box3<U, C, U>());
+        M::cpy<M::Box3<U, U, C>>(M::new_box3<U, U, C>());
+        M::cpy<M::Box3<U, U, U>>(M::new_box3<U, U, U>());
+        Tuple()
+    }
+    spec fun $both<R,C>(_r: #0,_c: #1) {
+        Abort(0)
+    }
+    spec fun $cpy<C>(_c: #0) {
+        Abort(0)
+    }
+    spec fun $new_box<T>(): M::Box<#0> {
+        Abort(0)
+    }
+    spec fun $new_box3<T1,T2,T3>(): M::Box3<#0, #1, #2> {
+        Abort(0)
+    }
+    spec fun $rsrc<R>(_r: #0) {
+        Abort(0)
+    }
+    spec fun $t0();
+    spec fun $t1<R,C>() {
+        M::$both<M::Box<#1>, M::Box<#0>>(M::$new_box<#1>(), M::$new_box<#0>())
+    }
+    spec fun $t2<R,C>();
+    spec fun $t3<U,C>();
+} // end 0x8675309::M

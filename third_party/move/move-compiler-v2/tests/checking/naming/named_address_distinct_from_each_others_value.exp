@@ -1,0 +1,61 @@
+
+Diagnostics:
+error: address with no value
+  ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:5:8
+  │
+5 │ module A::M {
+  │        ^ address 'A' is not assigned a value. Try assigning it a value when calling the compiler
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:11:8
+   │
+11 │ module A::Ex0 {
+   │        ^ address 'A' is not assigned a value. Try assigning it a value when calling the compiler
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:15:8
+   │
+15 │ module A::Ex1 {
+   │        ^ address 'A' is not assigned a value. Try assigning it a value when calling the compiler
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:12:12
+   │
+12 │     friend B::M;
+   │            ^ address 'B' is not assigned a value
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:16:9
+   │
+16 │     use B::M;
+   │         ^ address 'B' is not assigned a value
+
+error: unbound module
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:16:9
+   │
+16 │     use B::M;
+   │         ^^^^ Invalid 'use'. Unbound module: 'B::M'
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:17:22
+   │
+17 │     public fun ex(): B::M::S {
+   │                      ^ address 'B' is not assigned a value
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:18:9
+   │
+18 │         B::M::C;
+   │         ^ address 'B' is not assigned a value
+
+error: address with no value
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:19:9
+   │
+19 │         B::M::s()
+   │         ^ address 'B' is not assigned a value
+
+error: unbound module
+   ┌─ tests/checking/naming/named_address_distinct_from_each_others_value.move:22:23
+   │
+22 │     public fun ex2(): M::S {
+   │                       ^ Unbound module alias 'M'

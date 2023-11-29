@@ -1,0 +1,30 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct R {
+        f: u64,
+    }
+    private fun t0() {
+        {
+          let _;
+          {
+            let _r: M::R;
+            {
+              let (_, _);
+              Tuple()
+            }
+          }
+        }
+    }
+    spec fun $t0() {
+        {
+          let _;
+          {
+            let _r: M::R;
+            {
+              let (_, _);
+              Tuple()
+            }
+          }
+        }
+    }
+} // end 0x8675309::M

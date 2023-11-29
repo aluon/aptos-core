@@ -1,0 +1,15 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct Payments {
+        value: u64,
+    }
+    public fun create_stream(asigner: signer): u64 {
+        {
+          let payments: &mut M::Payments;
+          payments: &mut M::Payments = Borrow(Mutable)(pack M::Payments(3));
+          MoveTo<&mut M::Payments>(Borrow(Immutable)(asigner), payments);
+          select M::Payments.value(payments)
+        }
+    }
+    spec fun $create_stream(asigner: signer): u64;
+} // end 0x8675309::M

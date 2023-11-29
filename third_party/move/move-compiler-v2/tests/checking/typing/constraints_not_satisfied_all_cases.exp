@@ -1,0 +1,45 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct C {
+        dummy_field: bool,
+    }
+    struct CupC {
+        f: #0,
+    }
+    struct CupR {
+        f: #0,
+    }
+    struct R {
+        dummy_field: bool,
+    }
+    private fun c(_c: M::CupC<M::C>,_r: M::CupR<M::C>) {
+        Abort(0)
+    }
+    private fun no_constraint<T>(_c: M::CupC<#0>,_r: M::CupR<#0>) {
+        Abort(0)
+    }
+    private fun r(_c: M::CupC<M::R>,_r: M::CupR<M::R>) {
+        Abort(0)
+    }
+    private fun t_copyable<T>(_c: M::CupC<#0>,_r: M::CupR<#0>) {
+        Abort(0)
+    }
+    private fun t_resource<T>(_c: M::CupC<#0>,_r: M::CupR<#0>) {
+        Abort(0)
+    }
+    spec fun $c(_c: M::CupC<M::C>,_r: M::CupR<M::C>) {
+        Abort(0)
+    }
+    spec fun $no_constraint<T>(_c: M::CupC<#0>,_r: M::CupR<#0>) {
+        Abort(0)
+    }
+    spec fun $r(_c: M::CupC<M::R>,_r: M::CupR<M::R>) {
+        Abort(0)
+    }
+    spec fun $t_copyable<T>(_c: M::CupC<#0>,_r: M::CupR<#0>) {
+        Abort(0)
+    }
+    spec fun $t_resource<T>(_c: M::CupC<#0>,_r: M::CupR<#0>) {
+        Abort(0)
+    }
+} // end 0x8675309::M

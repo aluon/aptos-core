@@ -1,0 +1,27 @@
+// ---- Model Dump
+module 0x42::M {
+    struct S1 {
+        a: #0,
+        b: vector<#0>,
+    }
+    struct S2 {
+        a: #0,
+    }
+    struct S3 {
+        a: M::S2<#0>,
+    }
+    struct S4 {
+        a: M::S2<M::S2<#0>>,
+    }
+    struct S5 {
+        a: #0,
+        b: #1,
+        c: #2,
+    }
+    struct S6 {
+        a: bool,
+    }
+    struct S7 {
+        a: M::S6<#0>,
+    }
+} // end 0x42::M

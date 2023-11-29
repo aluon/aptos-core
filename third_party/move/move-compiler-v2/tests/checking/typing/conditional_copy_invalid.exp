@@ -1,0 +1,66 @@
+// ---- Model Dump
+module 0x42::M {
+    struct Box {
+        f: #0,
+    }
+    struct Pair {
+        f1: #0,
+        f2: #1,
+    }
+    struct R {
+        dummy_field: bool,
+    }
+    struct S {
+        dummy_field: bool,
+    }
+    private fun ex<T>(t1: #0,t2: #0,t3: #0,t4: #0) {
+        {
+          let x: M::Box<M::R> = pack M::Box<M::R>(pack M::R(false));
+          M::ignore<M::Box<M::R>>(Copy(x));
+          {
+            let x: M::Box<M::Box<M::R>> = pack M::Box<M::Box<M::R>>(pack M::Box<M::R>(pack M::R(false)));
+            M::ignore<M::Box<M::Box<M::R>>>(Copy(x));
+            {
+              let x: M::Box<T> = pack M::Box<T>(t1);
+              M::ignore<M::Box<T>>(Copy(x));
+              {
+                let x: M::Box<M::Box<T>> = pack M::Box<M::Box<T>>(pack M::Box<T>(t2));
+                M::ignore<M::Box<M::Box<T>>>(Copy(x));
+                {
+                  let x: M::Pair<M::S, M::R> = pack M::Pair<M::S, M::R>(pack M::S(false), pack M::R(false));
+                  M::ignore<M::Pair<M::S, M::R>>(Copy(x));
+                  {
+                    let x: &M::Box<M::R> = Borrow(Immutable)(pack M::Box<M::R>(pack M::R(false)));
+                    M::ignore<M::Box<M::R>>(Deref(x));
+                    {
+                      let x: &M::Box<M::Box<M::R>> = Borrow(Immutable)(pack M::Box<M::Box<M::R>>(pack M::Box<M::R>(pack M::R(false))));
+                      M::ignore<M::Box<M::Box<M::R>>>(Deref(x));
+                      {
+                        let x: &M::Box<T> = Borrow(Immutable)(pack M::Box<T>(t3));
+                        M::ignore<M::Box<T>>(Deref(x));
+                        {
+                          let x: &M::Box<M::Box<T>> = Borrow(Immutable)(pack M::Box<M::Box<T>>(pack M::Box<T>(t4)));
+                          M::ignore<M::Box<M::Box<T>>>(Deref(x));
+                          {
+                            let x: &M::Pair<M::R, M::S> = Borrow(Immutable)(pack M::Pair<M::R, M::S>(pack M::R(false), pack M::S(false)));
+                            M::ignore<M::Pair<M::R, M::S>>(Deref(x));
+                            Abort(0)
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+    }
+    private fun ignore<T>(_x: #0) {
+        Abort(0)
+    }
+    spec fun $ex<T>(t1: #0,t2: #0,t3: #0,t4: #0);
+    spec fun $ignore<T>(_x: #0) {
+        Abort(0)
+    }
+} // end 0x42::M

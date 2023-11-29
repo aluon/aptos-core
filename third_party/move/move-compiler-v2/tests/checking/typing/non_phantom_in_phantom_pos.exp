@@ -1,0 +1,15 @@
+// ---- Model Dump
+module 0x42::M {
+    struct S1 {
+        f: #1,
+    }
+    struct S2 {
+        a: M::S1<#0, #1>,
+    }
+    struct S3 {
+        a: M::S1<#0, #0>,
+    }
+    struct S4 {
+        a: M::S2<M::S1<#0, #1>, #1>,
+    }
+} // end 0x42::M

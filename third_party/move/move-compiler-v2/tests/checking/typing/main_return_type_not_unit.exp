@@ -1,0 +1,9 @@
+// ---- Model Dump
+module <SELF> {
+    private fun main(): u64 {
+        0
+    }
+    spec fun $main(): u64 {
+        0
+    }
+} // end <SELF>

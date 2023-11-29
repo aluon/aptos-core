@@ -1,0 +1,7 @@
+
+Diagnostics:
+error: field `v` not declared in struct `M::X`
+   ┌─ tests/checking/typing/mutable_borrow_from_immutable.move:11:14
+   │
+11 │         &mut xref.v;
+   │              ^^^^

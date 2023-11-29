@@ -1,0 +1,23 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct C {
+        dummy_field: bool,
+    }
+    struct CupC {
+        f: #0,
+    }
+    struct R {
+        dummy_field: bool,
+    }
+    private fun foo() {
+        M::ignore<M::CupC<M::R>>(Abort(0));
+        Tuple()
+    }
+    private fun ignore<T>(_x: #0) {
+        Abort(0)
+    }
+    spec fun $foo();
+    spec fun $ignore<T>(_x: #0) {
+        Abort(0)
+    }
+} // end 0x8675309::M

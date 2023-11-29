@@ -1,0 +1,36 @@
+// ---- Model Dump
+module 0x8675309::M {
+    struct R {
+        dummy_field: bool,
+    }
+    private fun t0() {
+        pack M::R(false);
+        Tuple()
+    }
+    private fun t1() {
+        {
+          let r: M::R = pack M::R(false);
+          r;
+          Tuple()
+        }
+    }
+    private fun t2() {
+        Tuple(0, false, pack M::R(false));
+        Tuple()
+    }
+    private fun t3() {
+        {
+          let r: M::R = pack M::R(false);
+          if true {
+            Tuple(0, false, pack M::R(false))
+          } else {
+            Tuple(0, false, r)
+          };
+          Tuple()
+        }
+    }
+    spec fun $t0();
+    spec fun $t1();
+    spec fun $t2();
+    spec fun $t3();
+} // end 0x8675309::M
