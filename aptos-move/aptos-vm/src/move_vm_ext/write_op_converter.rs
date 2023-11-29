@@ -111,13 +111,15 @@ impl<'r> WriteOpConverter<'r> {
         })?;
 
         let (pre_group_tag_count, pre_group_tags_size) = match pre_group_size_info {
-            ResourceGroupSize::Concrete(_) => return Err(VMStatus::error(
-                StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
-                err_msg(format!(
+            ResourceGroupSize::Concrete(_) => {
+                return Err(VMStatus::error(
+                    StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
+                    err_msg(format!(
                     "Unexpected ResourceGroupSize::Concrete in convert_resource_group_v1 for {:?}",
                     state_key
                 )),
-            )),
+                ))
+            },
             ResourceGroupSize::Combined {
                 num_tagged_resources,
                 all_tagged_resources_size,
