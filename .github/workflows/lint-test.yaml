@@ -56,7 +56,7 @@ jobs:
   # Run the crypto hasher domain separation checks
   rust-cryptohasher-domain-separation-check:
     needs: file_change_determinator
-    runs-on: high-perf-docker
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'CICD:non-required-tests')
     steps:
       - uses: actions/checkout@v4
@@ -69,7 +69,7 @@ jobs:
   # Run all rust lints. This is a PR required job.
   rust-lints:
     needs: file_change_determinator
-    runs-on: high-perf-docker
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         if: needs.file_change_determinator.outputs.only_docs_changed != 'true'
@@ -94,7 +94,7 @@ jobs:
         github.event.pull_request.auto_merge != null) ||
         contains(github.event.pull_request.body, '#e2e'
       )
-    runs-on: high-perf-docker
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         if: needs.file_change_determinator.outputs.only_docs_changed != 'true'
@@ -109,7 +109,7 @@ jobs:
   # Run all rust unit tests. This is a PR required job.
   rust-unit-tests:
     needs: file_change_determinator
-    runs-on: high-perf-docker
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         if: needs.file_change_determinator.outputs.only_docs_changed != 'true'
@@ -118,12 +118,13 @@ jobs:
         if: needs.file_change_determinator.outputs.only_docs_changed != 'true'
         with:
           GIT_CREDENTIALS: ${{ secrets.GIT_CREDENTIALS }}
+          BUILDKITE_ANALYTICS_TOKEN: ${{ secrets.BUILDKITE_ANALYTICS_TOKEN }}
       - run: echo "Skipping rust unit tests! Unrelated changes detected."
         if: needs.file_change_determinator.outputs.only_docs_changed == 'true'
 
   # Run the consensus only unit tests
   rust-consensus-only-unit-test:
-    runs-on: high-perf-docker
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'CICD:build-consensus-only-image')
     steps:
       - uses: actions/checkout@v4
@@ -139,7 +140,7 @@ jobs:
 
   # Run the rust network performance unit tests
   rust-network-perf-unit-test:
-    runs-on: high-perf-docker
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'CICD:non-required-tests')
     steps:
       - uses: actions/checkout@v4
@@ -155,7 +156,7 @@ jobs:
 
   # Run the consensus only smoke test
   rust-consensus-only-smoke-test:
-    runs-on: high-perf-docker
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'CICD:build-consensus-only-image')
     steps:
       - uses: actions/checkout@v4
@@ -183,7 +184,7 @@ jobs:
 
   # Run the network performance smoke test
   rust-network-perf-smoke-test:
-    runs-on: high-perf-docker
+    runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'CICD:non-required-tests')
     steps:
       - uses: actions/checkout@v4
