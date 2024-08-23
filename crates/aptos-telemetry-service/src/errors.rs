@@ -99,6 +99,8 @@ pub(crate) enum LogIngestError {
     IngestionError,
     #[error("peer id forbidden from posting logs")]
     Forbidden(PeerId),
+    #[error("anonymous log ingest not allowed")]
+    AnonymousLogIngestNotAllowed,
 }
 
 #[derive(Debug, ThisError)]

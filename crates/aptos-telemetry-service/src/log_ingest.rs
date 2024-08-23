@@ -136,3 +136,90 @@ pub async fn handle_log_ingest(
 
     Ok(reply::with_status(reply::reply(), StatusCode::CREATED))
 }
+
+pub fn anonymous_log_ingest(context: Context) -> BoxedFilter<(impl Reply,)> {
+    warp::path!("ingest" / "logs" / "anonymous")
+        .and(warp::post())
+        .and(context.clone().filter())
+        .and(warp::header::optional(CONTENT_ENCODING.as_str()))
+        .and(warp::body::content_length_limit(MAX_CONTENT_LENGTH))
+        .and(warp::body::aggregate())
+        .and_then(handle_anonymous_log_ingest)
+        .boxed()
+}
+
+async fn handle_anonymous_log_ingest(
+    context: Context,
+    encoding: Option<String>,
+    body: impl Buf,
+) -> anyhow::Result<impl Reply, Rejection> {
+    debug!("handling anonymous log ingest");
+
+    // TODO: Implement killswitch
+    if true == true {
+        return Err(reject::custom(ServiceError::forbidden(
+            LogIngestError::AnonymousLogIngestNotAllowed.into(),
+        )));
+    }
+
+    let client = &context.log_ingest_clients().unknown_logs_ingest_client;
+
+    let log_messages: Vec<String> = if let Some(encoding) = encoding {
+        if encoding.eq_ignore_ascii_case("gzip") {
+            let decoder = GzDecoder::new(body.reader());
+            serde_json::from_reader(decoder).map_err(|e| {
+                debug!("unable to decode and deserialize body: {}", e);
+                ServiceError::bad_request(LogIngestError::UnexpectedPayloadBody.into())
+            })?
+        } else {
+            return Err(reject::custom(ServiceError::bad_request(
+                LogIngestError::UnexpectedContentEncoding.into(),
+            )));
+        }
+    } else {
+        serde_json::from_reader(body.reader()).map_err(|e| {
+            error!("unable to deserialize body: {}", e);
+            ServiceError::bad_request(LogIngestError::UnexpectedPayloadBody.into())
+        })?
+    };
+
+    let unstructured_log = UnstructuredLog {
+        fields: HashMap::new(),
+        tags: HashMap::new(),
+        messages: log_messages,
+    };
+
+    debug!("ingesting to humio: {:?}", unstructured_log);
+
+    let start_timer = Instant::now();
+    let res = client.ingest_unstructured_log(unstructured_log).await;
+
+    match res {
+        Ok(res) => {
+            LOG_INGEST_BACKEND_REQUEST_DURATION
+                .with_label_values(&[res.status().as_str()])
+                .observe(start_timer.elapsed().as_secs_f64());
+            if res.status().is_success() {
+                debug!("log ingested into humio succeessfully");
+            } else {
+                error!(
+                    "humio log ingestion failed: {}",
+                    res.error_for_status().err().unwrap()
+                );
+                return Err(reject::custom(ServiceError::bad_request(
+                    LogIngestError::IngestionError.into(),
+                )));
+            }
+        },
+        Err(err) => {
+            LOG_INGEST_BACKEND_REQUEST_DURATION
+                .with_label_values(&["Unknown"])
+                .observe(start_timer.elapsed().as_secs_f64());
+            error!("error sending log ingest request: {}", err);
+            return Err(reject::custom(ServiceError::bad_request(
+                LogIngestError::IngestionError.into(),
+            )));
+        },
+    }
+    Ok(reply::with_status(reply::reply(), StatusCode::CREATED))
+}

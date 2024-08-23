@@ -95,6 +95,16 @@ impl TelemetrySender {
         Ok(self.base_url.join(&self.version_path_base)?.join(path)?)
     }
 
+    /// Send an anonymous request to the telemetry service without adding an auth token
+    pub async fn send_anonymous_request(
+        &self,
+        request_builder: RequestBuilder,
+    ) -> Result<Response, anyhow::Error> {
+        let request = request_builder.build()?;
+        let response = self.client.execute(request).await?;
+        error_for_status_with_body(response).await
+    }
+
     // sends an authenticated request to the telemetry service, automatically adding an auth token
     // This function does not work with streaming bodies at the moment and will panic if you try so.
     pub async fn send_authenticated_request(
@@ -652,6 +662,36 @@ mod tests {
 
         client.try_send_logs(batch).await;
 
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_post_anonymous_logs() {
+        let batch = vec!["log1".to_string(), "log2".to_string()];
+        let json = serde_json::to_string(&batch);
+        assert!(json.is_ok());
+
+        let mut gzip_encoder = GzEncoder::new(Vec::new(), Compression::default());
+        gzip_encoder.write_all(json.unwrap().as_bytes()).unwrap();
+        let expected_compressed_bytes = gzip_encoder.finish().unwrap();
+
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method("POST")
+                .header("Authorization", "Bearer SECRET_JWT_TOKEN")
+                .path("/api/v1/ingest/logs/anonymous")
+                .body(String::from_utf8_lossy(&expected_compressed_bytes));
+            then.status(200);
+        });
+
+        let node_config = NodeConfig::default();
+        let client = TelemetrySender::new(
+            Url::parse(&server.base_url()).expect("unable to parse base url"),
+            ChainId::default(),
+            &node_config,
+        );
+
+        client.try_send_logs(batch).await;
         mock.assert();
     }
 
