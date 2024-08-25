@@ -95,6 +95,55 @@ fn enable_log_env_polling() -> bool {
         || !(telemetry_is_disabled() || env::var(ENV_APTOS_DISABLE_LOG_ENV_POLLING).is_ok())
 }
 
+pub fn start_anonymous_telemetry_service(
+    remote_log_rx: Option<mpsc::Receiver<TelemetryLog>>,
+    logger_filter_update_job: Option<LoggerFilterUpdater>,
+) -> Option<Runtime> {
+    if telemetry_is_disabled() {
+        info!("Telemetry service is disabled");
+        return None;
+    }
+
+    let runtime = aptos_runtimes::spawn_named_runtime("anon-telem".into(), None);
+
+    runtime.spawn(async move {
+        spawn_anonymous_telemetry_service(remote_log_rx, logger_filter_update_job).await;
+    });
+
+    Some(runtime)
+}
+
+async fn spawn_anonymous_telemetry_service(
+    remote_log_rx: Option<mpsc::Receiver<TelemetryLog>>,
+    logger_filter_update_job: Option<LoggerFilterUpdater>,
+) {
+    let telemetry_svc_url =
+        env::var(ENV_TELEMETRY_SERVICE_URL).unwrap_or_else(|_| TELEMETRY_SERVICE_URL.into());
+
+    let base_url = Url::parse(&telemetry_svc_url).unwrap_or_else(|err| {
+        warn!(
+            "Unable to parse telemetry service URL {}. Make sure {} is unset or is set properly: {}. Defaulting to {}.",
+            telemetry_svc_url,
+            ENV_TELEMETRY_SERVICE_URL, err, TELEMETRY_SERVICE_URL
+        );
+        Url::parse(TELEMETRY_SERVICE_URL)
+            .expect("unable to parse telemetry service default URL")
+    });
+
+    let node_config = NodeConfig::default();
+    let chain_id = ChainId::test();
+
+    let telemetry_sender = TelemetrySender::new(base_url, chain_id, &node_config);
+    try_spawn_log_sender(telemetry_sender.clone(), remote_log_rx);
+
+    // Run the logger filter update job within the telemetry runtime.
+    if let Some(job) = logger_filter_update_job {
+        tokio::spawn(job.run());
+    }
+
+    info!("Anonymous telemetry service started!");
+}
+
 /// Starts the telemetry service and returns the execution runtime.
 /// Note: The service will not be created if telemetry is disabled.
 pub fn start_telemetry_service(

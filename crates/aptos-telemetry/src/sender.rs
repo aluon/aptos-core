@@ -55,6 +55,7 @@ pub(crate) struct TelemetrySender {
     client: ClientWithMiddleware,
     auth_context: Arc<AuthContext>,
     uuid: Uuid,
+    is_anonymous: bool,
 }
 
 impl TelemetrySender {
@@ -88,9 +89,50 @@ impl TelemetrySender {
             client,
             auth_context: Arc::new(AuthContext::new(node_config)),
             uuid: uuid::Uuid::new_v4(),
+            is_anonymous: false,
         }
     }
 
+    /// Construct an anonymous sender
+    pub fn new_anonymous(base_url: Url) -> Self {
+        let retry_policy = ExponentialBackoff::builder().build_with_total_retry_duration(
+            Duration::from_secs(TELEMETRY_SERVICE_TOTAL_RETRY_DURATION_SECS),
+        );
+
+        let reqwest_client = reqwest::Client::new();
+        let client = ClientBuilder::new(reqwest_client)
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .build();
+
+        let version_path_base = match base_url.path() {
+            "/" => DEFAULT_VERSION_PATH_BASE.to_string(),
+            path => {
+                if !path.ends_with('/') {
+                    format!("{}/", path)
+                } else {
+                    path.to_string()
+                }
+            },
+        };
+
+        Self {
+            base_url,
+            version_path_base,
+            chain_id: ChainId::default(),
+            peer_id: PeerId::ZERO,
+            role_type: RoleType::Validator,
+            client,
+            auth_context: Arc::new(AuthContext {
+                noise_config: None,
+                token: RwLock::new(None),
+                server_public_key: Mutex::new(None),
+            }),
+            uuid: uuid::Uuid::new_v4(),
+            is_anonymous: true,
+        }
+    }
+
+    /// Build a full url from the base url and the version
     pub fn build_path(&self, path: &str) -> Result<Url> {
         Ok(self.base_url.join(&self.version_path_base)?.join(path)?)
     }
