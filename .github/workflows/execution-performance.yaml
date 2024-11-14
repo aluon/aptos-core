@@ -7,7 +7,19 @@ on:
     - cron: "0 */4 * * *" # This runs every four hours
 
 jobs:
+  create-runner:
+    runs-on: runs-on,cpu=4,ram=16,family=m7a+m7i-flex,image=aptos-ubuntu-x64,run-id=${{ github.run_id }}
+    outputs:
+      label: ${{ steps.create-runner.outputs.label }}
+    steps:
+      - id: create-runner
+        uses: related-sciences/gce-github-runner@v0.11
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
   execution-performance:
+    needs: create-runner
     if: | # Only run on each PR once an appropriate event occurs
       (
         github.event_name == 'workflow_dispatch' ||
@@ -21,8 +33,8 @@ jobs:
     secrets: inherit
     with:
       GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      RUNNER_NAME: executor-benchmark-runner
-       # Run all tests only on the scheduled cadence, or explicitly requested
+      RUNNER_NAME: ${{ needs.create-runner.outputs.label }}
+      # Run all tests only on the scheduled cadence, or explicitly requested
       FLOW: ${{ (github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'CICD:run-execution-performance-full-test')) && 'CONTINUOUS' || 'LAND_BLOCKING' }}
       # Ignore target determination if on the scheduled cadence, or explicitly requested
       IGNORE_TARGET_DETERMINATION: ${{ github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'CICD:run-execution-performance-test') || contains(github.event.pull_request.labels.*.name, 'CICD:run-execution-performance-full-test') }}
